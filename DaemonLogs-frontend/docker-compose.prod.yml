@@ -13,6 +13,7 @@ services:
       target: prod
       args:
         VITE_API_URL: ${VITE_API_URL:?Defina VITE_API_URL antes de rodar em produção}
+        VITE_AUTH_MODE: ${VITE_AUTH_MODE:-local}
     ports:
       - "80:80"
     restart: unless-stopped

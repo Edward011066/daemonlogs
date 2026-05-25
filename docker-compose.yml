@@ -7,14 +7,14 @@
 #   - api    NÃO tem porta exposta externamente (acesso só pelo nginx)
 #
 # Como usar:
-#   1. Configure ./DaemonLogs-backend/.env  (veja .env.example do backend)
-#   2. Configure ./DaemonLogs-frontend/.env (veja .env.example do frontend)
-#      IMPORTANTE: VITE_AUTH_MODE deve ser igual ao AUTH_MODE do backend
-#   3. docker compose up --build
-#   4. Acesse http://localhost (ou a porta configurada em FRONTEND_PORT)
+#   1. Copie .env.example → .env  e preencha as variáveis
+#      (um único .env na raiz configura backend + frontend + banco)
+#   2. docker compose up --build
+#   3. Acesse http://<ip-da-vps> (ou a porta configurada em FRONTEND_PORT)
 #
-# Variáveis opcionais no shell (ou num .env na raiz deste compose):
-#   FRONTEND_PORT  — porta exposta do nginx  (padrão: 80)
+# Para VPSs separadas, use os composes individuais:
+#   DaemonLogs-backend/docker-compose.yml     → só o backend + banco
+#   DaemonLogs-frontend/docker-compose.prod.yml → só o frontend
 
 services:
 
@@ -23,9 +23,9 @@ services:
     image: postgres:16-alpine
     container_name: daemonlogs-postgres
     restart: unless-stopped
-    # Lê POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB do backend/.env
+    # Lê POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB do .env da raiz
     env_file:
-      - ./DaemonLogs-backend/.env
+      - ./.env
     volumes:
       - postgres_data:/var/lib/postgresql/data
     # Sem porta externa — apenas a rede interna do compose
@@ -42,7 +42,7 @@ services:
     container_name: daemonlogs-api
     restart: unless-stopped
     env_file:
-      - ./DaemonLogs-backend/.env
+      - ./.env
     environment:
       NODE_ENV: production
       SWAGGER_ENABLED: "false"
@@ -75,10 +75,11 @@ services:
       context: ./DaemonLogs-frontend
       target: prod
       args:
-        # VITE_API_URL é baked no build pelo Vite.
-        # /api é uma rota relativa — o nginx deste container faz o proxy
-        # de /api/* → api:3000/* (rede interna do compose).
+        # VITE_API_URL: /api — rota relativa; o nginx deste container faz o proxy
+        # de /api/* → api:3000/* (rede interna do compose). Não alterar.
         VITE_API_URL: /api
+        # VITE_AUTH_MODE vem do .env da raiz e deve ser igual ao AUTH_MODE do backend
+        VITE_AUTH_MODE: ${VITE_AUTH_MODE:-local}
     container_name: daemonlogs-frontend
     restart: unless-stopped
     ports:

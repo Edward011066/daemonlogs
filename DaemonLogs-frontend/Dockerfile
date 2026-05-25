@@ -13,7 +13,9 @@ CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 # ── Estágio 3: build de produção ─────────────────────────────────────────────
 FROM deps AS builder
 ARG VITE_API_URL=http://localhost:3000
+ARG VITE_AUTH_MODE=local
 ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_AUTH_MODE=$VITE_AUTH_MODE
 COPY . .
 RUN npm run build
 
