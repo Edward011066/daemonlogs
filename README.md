@@ -118,19 +118,18 @@ Sem o `.env`, o projeto ate pode existir, mas nao sabe exatamente como deve se c
 
 Voce vai trabalhar basicamente nestes arquivos:
 
-### Backend
+### Deploy unificado (tudo em uma VPS)
 
-- `DaemonLogs-backend/.env`
-- `DaemonLogs-backend/.env.example`
+- `.env` na raiz — **unico arquivo a configurar**
+- `.env.example` na raiz — modelo base
+- `docker-compose.yml` — sobe backend + frontend + banco
 
-### Frontend
+### Deploy separado (VPSs diferentes)
 
-- `DaemonLogs-frontend/.env`
-- `DaemonLogs-frontend/.env.example`
-
-### Stack unificada
-
-- `docker-compose.yml`
+- `DaemonLogs-backend/.env` — configura so o backend + banco
+- `DaemonLogs-backend/.env.example` — modelo
+- `DaemonLogs-frontend/.env` — configura so o frontend
+- `DaemonLogs-frontend/.env.example` — modelo
 
 > **Importante:** `.env.example` e apenas um modelo. O arquivo usado de verdade e o `.env`.
 
@@ -149,8 +148,9 @@ Esta e a forma mais simples para quem quer colocar tudo no ar na mesma maquina.
 
 ### O que voce edita nesse modo
 
-1. `DaemonLogs-backend/.env`
-2. `DaemonLogs-frontend/.env`
+Apenas **um arquivo na raiz do projeto**: `.env`
+
+Todas as configuracoes — banco, backend, frontend e compose — ficam nesse unico arquivo.
 
 Depois disso, basta rodar um comando na raiz do projeto.
 
@@ -158,15 +158,32 @@ Depois disso, basta rodar um comando na raiz do projeto.
 
 ## Como preencher o .env do backend passo a passo
 
-## Passo 1: criar o arquivo .env do backend
+> **Lendo este guia para o deploy unificado?**
+> Nesse caso voce vai criar `.env` **na raiz do projeto** (nao dentro de `DaemonLogs-backend`).
+> O `.env.example` da raiz ja contem todos os campos necessarios.
+> Os passos e explicacoes abaixo valem igualmente — os blocos e variaveis sao os mesmos.
 
-Se o arquivo ainda nao existir, copie o exemplo:
+## Passo 1: criar o arquivo .env
+
+### Para deploy unificado (raiz do projeto)
+
+```bash
+copy .env.example .env
+```
+
+Ou no PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+### Para deploy so do backend (VPS separada)
 
 ```bash
 copy DaemonLogs-backend\.env.example DaemonLogs-backend\.env
 ```
 
-Se voce estiver no PowerShell e o comando `copy` nao funcionar como esperado, tambem pode usar:
+Ou no PowerShell:
 
 ```powershell
 Copy-Item DaemonLogs-backend\.env.example DaemonLogs-backend\.env
@@ -221,7 +238,11 @@ POSTGRES_PASSWORD=Senha123!
 POSTGRES_DB=meubanco
 ```
 
-> **Nota:** no deploy conjunto com o `docker-compose.yml` da raiz, o Compose troca internamente o host do banco para a rede Docker. Mesmo assim, mantenha esse bloco preenchido corretamente no `.env`, porque ele continua sendo a base das credenciais.
+> **Nota sobre `DATABASE_URL` no deploy unificado:** voce nao precisa definir `DATABASE_URL` no `.env` da raiz. O compose a constroi automaticamente em runtime a partir de `POSTGRES_USER`, `POSTGRES_PASSWORD` e `POSTGRES_DB`, com URL-encoding correto da senha (inclusive senhas com caracteres especiais como `@`, `#`, `!`). Basta preencher as tres variaveis `POSTGRES_*`.
+>
+> **Nota sobre deploy separado (backend standalone):** nesse caso, mantenha `DATABASE_URL` no `DaemonLogs-backend/.env` com o host correto (`localhost` para acesso local ou `postgres` na rede Docker interna).
+>
+> **Nota sobre a porta:** `PORT` deve ser `3000`. O nginx interno do compose faz proxy para `api:3000`. Usar outra porta (ex: `5000`) quebra o proxy e o healthcheck.
 
 ---
 
@@ -609,7 +630,10 @@ WOOVI_CHARGE_VALUE_CENTS=3990
 
 ## Como preencher o .env do frontend passo a passo
 
-## Passo 1: criar o arquivo .env do frontend
+> **Deploy unificado?** As variaveis do frontend (`VITE_AUTH_MODE`) estao no `.env` da raiz.
+> Esta secao descreve o funcionamento das variaveis e o que preencher no deploy separado.
+
+## Passo 1: criar o arquivo .env do frontend (deploy separado)
 
 Se ainda nao existir:
 
@@ -650,32 +674,23 @@ VITE_AUTH_MODE=local
 
 ## Passo 3: como preencher o frontend no deploy conjunto
 
-Se voce vai usar o `docker-compose.yml` da raiz, use este exemplo:
+No deploy unificado voce **nao edita `DaemonLogs-frontend/.env`**.
 
-### Se o backend esta em modo local
-
-```env
-VITE_API_URL=http://localhost:3000
-VITE_AUTH_MODE=local
-```
-
-### Se o backend esta em modo Discord
+Voce edita o `.env` da **raiz do projeto** e define apenas:
 
 ```env
-VITE_API_URL=http://localhost:3000
-VITE_AUTH_MODE=discord
+VITE_AUTH_MODE=local   # ou discord
 ```
 
-### O que acontece no deploy conjunto
+O `VITE_API_URL` nao precisa ser configurado no `.env` da raiz — o compose injeta `/api` automaticamente no build para que o nginx interno faca o proxy.
 
-Mesmo que `VITE_API_URL` esteja assim no `.env`, o compose da raiz injeta `/api` no build do frontend para o deploy unificado.
+### Para deploy separado do frontend
 
-Em outras palavras:
-
-- externamente o usuario acessa o frontend
-- internamente o nginx do frontend encaminha `/api` para o backend
-
-> **Nota para nao confundir:** o `.env` do frontend continua existindo porque ele tambem precisa funcionar fora da stack unificada, em deploy separado.
+```env
+# DaemonLogs-frontend/.env
+VITE_API_URL=https://api.seudominio.com   # URL publica do backend
+VITE_AUTH_MODE=local                      # ou discord
+```
 
 ---
 
@@ -740,15 +755,26 @@ VITE_AUTH_MODE=discord
 
 Antes de rodar o Docker, revise esta lista:
 
-1. O arquivo `DaemonLogs-backend/.env` existe.
-2. O arquivo `DaemonLogs-frontend/.env` existe.
+### Para deploy unificado (raiz)
+
+1. O arquivo `.env` na raiz existe (copiado de `.env.example`).
+2. `JWT_SECRET` foi trocado por uma chave real.
+3. `POSTGRES_PASSWORD` nao ficou como `changeme`.
+4. `AUTH_MODE` e `VITE_AUTH_MODE` estao definidos com o mesmo valor.
+5. `PORT` esta como `3000` (nao mude para outra porta no deploy unificado).
+6. Se `AUTH_MODE=discord`, as chaves do Discord foram preenchidas.
+7. Se `EMAIL_ENABLED=true`, os dados SMTP foram preenchidos.
+8. O Docker Desktop esta aberto.
+
+### Para deploy separado (VPSs diferentes)
+
+1. `DaemonLogs-backend/.env` existe e esta preenchido.
+2. `DaemonLogs-frontend/.env` existe e esta preenchido.
 3. `JWT_SECRET` foi trocado por uma chave real.
 4. `POSTGRES_PASSWORD` nao ficou como `changeme`.
-5. `AUTH_MODE` do backend esta definido.
-6. `VITE_AUTH_MODE` do frontend esta igual ao backend.
-7. Se `AUTH_MODE=discord`, as chaves do Discord foram preenchidas.
-8. Se `EMAIL_ENABLED=true`, os dados SMTP foram preenchidos.
-9. O Docker Desktop esta aberto.
+5. `AUTH_MODE` (backend) igual a `VITE_AUTH_MODE` (frontend).
+6. Se `AUTH_MODE=discord`, as chaves do Discord foram preenchidas.
+7. O Docker esta aberto em cada servidor.
 
 ---
 
@@ -819,6 +845,13 @@ Cada projeto precisa ter o seu proprio `.env` preenchido corretamente.
 
 O frontend nao deve depender de ler nada da pasta do backend.
 
+### Qual compose usar em cada servidor
+
+| Servidor | Compose a usar | `.env` a configurar |
+|---|---|---|
+| Backend + banco | `DaemonLogs-backend/docker-compose.yml` | `DaemonLogs-backend/.env` |
+| So o frontend | `DaemonLogs-frontend/docker-compose.prod.yml` | `DaemonLogs-frontend/.env` |
+
 ---
 
 ## Cenario A: backend e banco em uma maquina, frontend em outra
@@ -852,7 +885,12 @@ SWAGGER_ENABLED=false
 EMAIL_ENABLED=false
 ```
 
-Suba o backend com o compose do proprio backend.
+Suba o backend dentro da pasta `DaemonLogs-backend`:
+
+```bash
+cd DaemonLogs-backend
+docker compose up --build -d
+```
 
 ---
 
@@ -872,6 +910,13 @@ VITE_AUTH_MODE=discord
 - o frontend esta em uma maquina
 - o backend esta publicado em `https://api.exemplo.com`
 - o frontend vai mandar requisicoes para essa URL publica
+
+Suba o frontend dentro da pasta `DaemonLogs-frontend`:
+
+```bash
+cd DaemonLogs-frontend
+docker compose -f docker-compose.prod.yml up --build -d
+```
 
 > **Nota:** em deploy separado, `VITE_API_URL` precisa apontar para a URL publica real do backend. Nao use `localhost` nesse caso.
 
@@ -1048,9 +1093,17 @@ Se voce seguir este tutorial com calma, linha por linha, o projeto sobe sem prec
 
 Se algo falhar, o primeiro lugar para revisar e sempre:
 
+**Deploy unificado:**
+1. `.env` na raiz (existe? esta preenchido?)
+2. `AUTH_MODE` e `VITE_AUTH_MODE` estao iguais?
+3. `PORT=3000` (nao pode ser outra porta no compose raiz)
+4. o comando usado no terminal
+5. se houve rebuild depois de mudar algo (`--build`)
+
+**Deploy separado:**
 1. `DaemonLogs-backend/.env`
 2. `DaemonLogs-frontend/.env`
-3. o comando usado no terminal
+3. o comando e o compose correto para cada pasta
 4. se houve rebuild depois de mudar algo do frontend
 
 Fim.
