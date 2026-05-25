@@ -46,6 +46,7 @@ import fp from "fastify-plugin";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
 var swagger_default = fp(async function swaggerPlugin(fastify) {
+  const serverUrl = process.env.SWAGGER_SERVER_URL?.trim() || "/";
   await fastify.register(swagger, {
     openapi: {
       openapi: "3.0.0",
@@ -54,6 +55,7 @@ var swagger_default = fp(async function swaggerPlugin(fastify) {
         description: "API de monitoramento de contas Discord",
         version: "1.0.0"
       },
+      servers: [{ url: serverUrl }],
       components: {
         securitySchemes: {
           bearerAuth: {
@@ -1698,11 +1700,22 @@ async function targetRoutes(fastify) {
   });
 }
 
-// src/modules/messages/repository.ts
-async function findMessagesByUserTarget(usuarioId, discordUserId, page = 1, limit = 50) {
-  const where = discordUserId ? { conta_alvo: { usuario_id: usuarioId, discord_user_id: discordUserId } } : { conta_alvo: { usuario_id: usuarioId } };
+// src/modules/events/repository.ts
+async function findMessagesSentByUser(usuarioId, discordUserId, page = 1, limit = 50, from, to) {
+  const where = {
+    conta_alvo: {
+      usuario_id: usuarioId,
+      ...discordUserId ? { discord_user_id: discordUserId } : {}
+    },
+    ...from || to ? {
+      created_at: {
+        ...from ? { gte: from } : {},
+        ...to ? { lte: to } : {}
+      }
+    } : {}
+  };
   const skip = (page - 1) * limit;
-  const [items, total] = await Promise.all([
+  const [rawItems, total] = await Promise.all([
     prisma_default.mensagens_salvas.findMany({
       where,
       orderBy: { created_at: "desc" },
@@ -1712,42 +1725,23 @@ async function findMessagesByUserTarget(usuarioId, discordUserId, page = 1, limi
     }),
     prisma_default.mensagens_salvas.count({ where })
   ]);
+  const items = rawItems.map((m) => ({
+    id: m.id,
+    tipo: "MESSAGE_SENT",
+    dados: {
+      message_id: m.message_id,
+      conteudo: m.conteudo,
+      link_mensagem: m.link_mensagem,
+      guild_id: m.guild_id,
+      guild_name: m.guild_name,
+      channel_id: m.channel_id,
+      channel_name: m.channel_name
+    },
+    created_at: m.created_at,
+    conta_alvo: m.conta_alvo
+  }));
   return { items, total, page, limit };
 }
-
-// src/modules/messages/service.ts
-async function listMessagesService(usuarioId, discordUserId, page = 1) {
-  return findMessagesByUserTarget(usuarioId, discordUserId, page);
-}
-
-// src/modules/messages/controller.ts
-async function listMessagesController(request, reply) {
-  const { targetId, page } = request.query;
-  const result = await listMessagesService(request.user.sub, targetId, Number(page) || 1);
-  return reply.send(result);
-}
-
-// src/modules/messages/routes.ts
-async function messageRoutes(fastify) {
-  fastify.get("/messages", {
-    onRequest: [fastify.authenticate],
-    schema: {
-      tags: ["Mensagens"],
-      summary: "Listar mensagens salvas das contas alvo",
-      security: [{ bearerAuth: [] }],
-      querystring: {
-        type: "object",
-        properties: {
-          targetId: { type: "string", description: "discord_user_id da conta alvo" },
-          page: { type: "number", default: 1 }
-        }
-      }
-    },
-    handler: listMessagesController
-  });
-}
-
-// src/modules/events/repository.ts
 async function findEventsByUser(usuarioId, discordUserId, tipo, page = 1, limit = 50, from, to) {
   const where = {
     conta_alvo: {
@@ -1778,7 +1772,12 @@ async function findEventsByUser(usuarioId, discordUserId, tipo, page = 1, limit 
 
 // src/modules/events/service.ts
 async function listEventsService(usuarioId, discordUserId, tipo, page = 1, limit = 50, from, to) {
-  return findEventsByUser(usuarioId, discordUserId, tipo, page, limit, from ? new Date(from) : void 0, to ? new Date(to) : void 0);
+  const fromDate = from ? new Date(from) : void 0;
+  const toDate = to ? new Date(to) : void 0;
+  if (tipo === "MESSAGE_SENT") {
+    return findMessagesSentByUser(usuarioId, discordUserId, page, limit, fromDate, toDate);
+  }
+  return findEventsByUser(usuarioId, discordUserId, tipo, page, limit, fromDate, toDate);
 }
 
 // src/modules/events/controller.ts
@@ -1797,7 +1796,7 @@ async function listEventsController(request, reply) {
 }
 
 // src/modules/events/routes.ts
-var TIPOS_EVENTO = ["MESSAGE_EDIT", "MESSAGE_DELETE", "VOICE_JOIN", "VOICE_LEAVE", "VOICE_SWITCH", "MENTION"];
+var TIPOS_EVENTO = ["MESSAGE_SENT", "MESSAGE_EDIT", "MESSAGE_DELETE", "VOICE_JOIN", "VOICE_LEAVE", "VOICE_SWITCH", "MENTION"];
 async function eventRoutes(fastify) {
   fastify.get("/events", {
     onRequest: [fastify.authenticate],
@@ -1830,7 +1829,12 @@ async function eventRoutes(fastify) {
                 properties: {
                   id: { type: "number" },
                   tipo: { type: "string" },
-                  dados: {},
+                  dados: {
+                    type: "object",
+                    nullable: true,
+                    description: "Para MESSAGE_SENT: { message_id, conteudo, link_mensagem, guild_id, guild_name, channel_id, channel_name }. Para demais tipos: dados do evento.",
+                    additionalProperties: true
+                  },
                   created_at: { type: "string" },
                   conta_alvo: {
                     type: "object",
@@ -3556,7 +3560,6 @@ async function buildApp() {
   await fastify.register(authRoutes);
   await fastify.register(monitoringRoutes);
   await fastify.register(targetRoutes);
-  await fastify.register(messageRoutes);
   await fastify.register(eventRoutes);
   await fastify.register(serverRoutes);
   await fastify.register(paymentRoutes);

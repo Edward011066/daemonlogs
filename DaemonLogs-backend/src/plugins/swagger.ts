@@ -4,6 +4,8 @@ import swaggerUi from '@fastify/swagger-ui'
 import { FastifyInstance } from 'fastify'
 
 export default fp(async function swaggerPlugin(fastify: FastifyInstance) {
+  const serverUrl = process.env.SWAGGER_SERVER_URL?.trim() || '/'
+
   await fastify.register(swagger, {
     openapi: {
       openapi: '3.0.0',
@@ -12,6 +14,7 @@ export default fp(async function swaggerPlugin(fastify: FastifyInstance) {
         description: 'API de monitoramento de contas Discord',
         version: '1.0.0',
       },
+      servers: [{ url: serverUrl }],
       components: {
         securitySchemes: {
           bearerAuth: {
