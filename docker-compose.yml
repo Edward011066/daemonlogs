@@ -47,7 +47,7 @@ services:
       - ./.env
     environment:
       NODE_ENV: production
-      SWAGGER_ENABLED: "true"
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-false}
     depends_on:
       postgres:
         condition: service_healthy
