@@ -41,6 +41,8 @@ services:
       context: ./DaemonLogs-backend
     container_name: daemonlogs-api
     restart: unless-stopped
+    ports:
+      - "5555:5555"
     env_file:
       - ./.env
     environment:
