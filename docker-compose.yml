@@ -44,8 +44,6 @@ services:
     env_file:
       - ./DaemonLogs-backend/.env
     environment:
-      # Sobrescreve DATABASE_URL para usar o hostname interno do compose
-      DATABASE_URL: postgresql://${POSTGRES_USER:-daemonlogs}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-daemonlogs_db}
       NODE_ENV: production
       SWAGGER_ENABLED: "false"
     depends_on:
@@ -53,13 +51,23 @@ services:
         condition: service_healthy
     # Sem porta externa — o nginx acessa via rede interna (api:3000)
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:$${PORT:-3000}/health || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
       start_period: 30s
-    command: >
-      sh -c "npx prisma migrate deploy && node dist/server.js"
+    # DATABASE_URL é construído em runtime usando node para URL-encodar a senha,
+    # evitando quebra de parsing com caracteres especiais (@, #, !, etc.)
+    command:
+      - sh
+      - -c
+      - |
+        PASS=$$(node -e 'process.stdout.write(encodeURIComponent(process.env.POSTGRES_PASSWORD))')
+        USER=$$(node -e 'process.stdout.write(encodeURIComponent(process.env.POSTGRES_USER))')
+        DB=$${POSTGRES_DB:-daemonlogs_db}
+        export DATABASE_URL="postgresql://$$USER:$$PASS@postgres:5432/$$DB"
+        npx prisma migrate deploy
+        node dist/server.js
 
   # ── Frontend (Vite build → nginx com proxy reverso) ───────────────────────
   frontend:
