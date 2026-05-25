@@ -5,6 +5,7 @@ import { AppError } from './utils/app-error.js'
 import swaggerPlugin from './plugins/swagger.js'
 import authPlugin from './plugins/auth.js'
 import rateLimitPlugin from './plugins/rate-limit.js'
+import prisma from './plugins/prisma.js'
 import { authRoutes } from './modules/auth/routes.js'
 import { monitoringRoutes } from './modules/monitoring/routes.js'
 import { targetRoutes } from './modules/targets/routes.js'
@@ -47,8 +48,11 @@ export async function buildApp() {
   await fastify.register(authPlugin)
   await fastify.register(rateLimitPlugin)
 
-  // Health check
-  fastify.get('/health', { schema: { hide: true } }, async () => ({ status: 'ok' }))
+  // Health check real: so responde OK quando a API e o banco estao acessiveis.
+  fastify.get('/health', { schema: { hide: true } }, async () => {
+    await prisma.$queryRaw`SELECT 1`
+    return { status: 'ok' }
+  })
 
   // Rotas
   await fastify.register(authRoutes)

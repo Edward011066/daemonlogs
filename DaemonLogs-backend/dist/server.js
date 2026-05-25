@@ -3480,7 +3480,10 @@ async function buildApp() {
   }
   await fastify.register(auth_default);
   await fastify.register(rate_limit_default);
-  fastify.get("/health", { schema: { hide: true } }, async () => ({ status: "ok" }));
+  fastify.get("/health", { schema: { hide: true } }, async () => {
+    await prisma_default.$queryRaw`SELECT 1`;
+    return { status: "ok" };
+  });
   await fastify.register(authRoutes);
   await fastify.register(monitoringRoutes);
   await fastify.register(targetRoutes);
@@ -3516,6 +3519,7 @@ var PORT = Number(process.env.PORT) || 3e3;
 async function main() {
   const app = await buildApp();
   try {
+    await prisma_default.$connect();
     await app.listen({ port: PORT, host: "0.0.0.0" });
     console.log(`\u{1F680} API rodando em http://0.0.0.0:${PORT}`);
     console.log(`\u{1F4D6} Swagger dispon\xEDvel em http://localhost:${PORT}/api-docs`);

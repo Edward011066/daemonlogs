@@ -11,6 +11,7 @@ async function main() {
 
   // Startup da API — falha aqui é fatal
   try {
+    await prisma.$connect()
     await app.listen({ port: PORT, host: '0.0.0.0' })
     console.log(`🚀 API rodando em http://0.0.0.0:${PORT}`)
     console.log(`📖 Swagger disponível em http://localhost:${PORT}/api-docs`)
