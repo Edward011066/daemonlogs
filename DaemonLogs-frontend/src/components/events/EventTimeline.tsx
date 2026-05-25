@@ -124,29 +124,33 @@ function VoiceEventBody({ tipo, dados }: { tipo: EventType; dados: Record<string
     )
   }
 
-  // MESSAGE_* / MENTION
+  // MESSAGE_* / MENTION — extrair como string | null para evitar 'unknown' em JSX
   const d = dados as Record<string, unknown>
+  const guildName   = typeof d.guild_name   === "string" ? d.guild_name   : null
+  const channelName = typeof d.channel_name === "string" ? d.channel_name : null
+  const content     = typeof d.content      === "string" ? d.content      : null
+
   return (
     <div className="space-y-1.5">
-      {(d.guild_name || d.channel_name) && (
+      {(guildName || channelName) && (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          {d.guild_name && (
+          {guildName && (
             <span className="flex items-center gap-1">
               <Server className="h-3.5 w-3.5 text-accent/70" />
-              {String(d.guild_name)}
+              {guildName}
             </span>
           )}
-          {d.channel_name && (
+          {channelName && (
             <span className="flex items-center gap-1">
               <Hash className="h-3.5 w-3.5 text-info/70" />
-              {String(d.channel_name)}
+              {channelName}
             </span>
           )}
         </div>
       )}
-      {d.content && (
+      {content && (
         <p className="rounded border border-border bg-surface-2 px-3 py-2 text-xs text-foreground/80 font-mono">
-          {String(d.content)}
+          {content}
         </p>
       )}
     </div>
