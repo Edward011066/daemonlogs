@@ -5,6 +5,8 @@
 #
 # A URL da API é injetada em tempo de build (baked-in pelo Vite).
 # Para trocar a URL é necessário reconstruir a imagem (--build).
+# Se voce usar nginx externo na VPS, prefira FRONTEND_PORT=5000
+# e aponte o proxy_pass para http://127.0.0.1:5000.
 
 services:
   frontend:
@@ -15,5 +17,5 @@ services:
         VITE_API_URL: ${VITE_API_URL:?Defina VITE_API_URL antes de rodar em produção}
         VITE_AUTH_MODE: ${VITE_AUTH_MODE:-local}
     ports:
-      - "80:80"
+      - "${FRONTEND_PORT:-5000}:80"
     restart: unless-stopped

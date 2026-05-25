@@ -4,6 +4,17 @@ import { createPagamento, findPagamentoByCorrelationId, findPagamentosByUser, up
 import { activateUserPremium } from '../plans/repository.js'
 
 const WOOVI_API_URL = 'https://api.woovi.com/api/v1/charge'
+const WOOVI_WEBHOOK_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
+MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC/+NtIkjzevvqD+I3MMv3bLXDt
+pvxBjY4BsRrSdca3rtAwMcRYYvxSnd7jagVLpctMiOxQO8ieUCKLSWHpsMAjO/zZ
+WMKbqoG8MNpi/u3fp6zz0mcHCOSqYsPUUG19buW8bis5ZZ2IZgBObWSpTvJ0cnj6
+HKBAA82Jln+lGwS1MwIDAQAB
+-----END PUBLIC KEY-----`
+
+type WooviWebhookSignatures = {
+  signature?: string
+  legacyHmacSignature?: string
+}
 
 export async function initiatePaymentService(usuarioId: number) {
   const correlationID = `premium-${usuarioId}-${Date.now()}`
@@ -65,22 +76,47 @@ export async function listPaymentsService(usuarioId: number) {
   return findPagamentosByUser(usuarioId)
 }
 
-export function validateWooviSignature(rawBody: string | Buffer, signatureHeader: string): boolean {
-  const secret = process.env.WOOVI_WEBHOOK_SECRET
-  if (!secret) return false
-  const expected = crypto
-    .createHmac('sha1', secret)
-    .update(rawBody)
-    .digest('hex')
+function validateWooviPublicSignature(rawBody: string | Buffer, signatureHeader: string): boolean {
+  if (!signatureHeader) return false
+
   try {
-    return crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(signatureHeader, 'hex'))
+    const verifier = crypto.createVerify('RSA-SHA256')
+    verifier.update(rawBody)
+    verifier.end()
+    return verifier.verify(WOOVI_WEBHOOK_PUBLIC_KEY, Buffer.from(signatureHeader, 'base64'))
   } catch {
     return false
   }
 }
 
-export async function handleWooviWebhook(rawBody: string, signature: string, payload: unknown): Promise<void> {
-  if (!validateWooviSignature(rawBody, signature)) {
+function validateWooviLegacyHmac(rawBody: string | Buffer, signatureHeader: string): boolean {
+  const secret = process.env.WOOVI_WEBHOOK_SECRET
+  if (!secret || !signatureHeader) return false
+
+  const expected = crypto
+    .createHmac('sha1', secret)
+    .update(rawBody)
+    .digest('base64')
+
+  try {
+    const expectedBuffer = Buffer.from(expected)
+    const receivedBuffer = Buffer.from(signatureHeader)
+    return expectedBuffer.length === receivedBuffer.length && crypto.timingSafeEqual(expectedBuffer, receivedBuffer)
+  } catch {
+    return false
+  }
+}
+
+export function validateWooviSignature(rawBody: string | Buffer, signatures: WooviWebhookSignatures): boolean {
+  if (validateWooviPublicSignature(rawBody, signatures.signature ?? '')) {
+    return true
+  }
+
+  return validateWooviLegacyHmac(rawBody, signatures.legacyHmacSignature ?? '')
+}
+
+export async function handleWooviWebhook(rawBody: string, signatures: WooviWebhookSignatures, payload: unknown): Promise<void> {
+  if (!validateWooviSignature(rawBody, signatures)) {
     throw new AppError(401, 'INVALID_SIGNATURE', 'Assinatura do webhook inválida')
   }
 

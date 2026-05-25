@@ -19,9 +19,10 @@ export async function listPaymentsController(request: FastifyRequest, reply: Fas
 
 export async function wooviWebhookController(request: FastifyRequest, reply: FastifyReply) {
   const signature = (request.headers['x-webhook-signature'] as string) ?? ''
+  const legacyHmacSignature = (request.headers['x-openpix-signature'] as string) ?? ''
   await handleWooviWebhook(
     (request as unknown as { rawBody: string }).rawBody,
-    signature,
+    { signature, legacyHmacSignature },
     request.body
   )
   return reply.code(200).send({ ok: true })
