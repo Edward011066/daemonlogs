@@ -1289,6 +1289,9 @@ async function findAllValidTokens() {
     select: { id: true, token: true }
   });
 }
+async function countActiveMonitoring() {
+  return prisma_default.contas_monitoramento.count({ where: { is_valid: true } });
+}
 
 // src/modules/monitoring/service.ts
 async function listMonitoringService(usuarioId) {
@@ -1316,6 +1319,14 @@ async function validateMonitoringService(id, usuarioId) {
   await updateMonitoringValidity(id, isValid);
   return { id, is_valid: isValid };
 }
+async function getMonitoringStatsService(usuarioId) {
+  const [userAccounts, totalActive] = await Promise.all([
+    findAllMonitoringByUser(usuarioId),
+    countActiveMonitoring()
+  ]);
+  const myActive = userAccounts.filter((a) => a.is_valid).length;
+  return { my_active: myActive, total_active: totalActive };
+}
 
 // src/modules/monitoring/controller.ts
 async function listMonitoringController(request, reply) {
@@ -1340,6 +1351,11 @@ async function validateMonitoringController(request, reply) {
   const { id } = request.params;
   const result = await validateMonitoringService(Number(id), usuarioId);
   return reply.send(result);
+}
+async function monitoringStatsController(request, reply) {
+  const usuarioId = request.user.sub;
+  const stats = await getMonitoringStatsService(usuarioId);
+  return reply.send(stats);
 }
 
 // src/modules/monitoring/routes.ts
@@ -1436,6 +1452,24 @@ async function monitoringRoutes(fastify) {
       }
     },
     handler: validateMonitoringController
+  });
+  fastify.get("/monitoring/stats", {
+    ...auth,
+    schema: {
+      tags: ["Monitoramento"],
+      summary: "Estat\xEDsticas de contas de monitoramento",
+      security,
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            my_active: { type: "number", description: "Minhas contas ativas" },
+            total_active: { type: "number", description: "Total de contas ativas na plataforma" }
+          }
+        }
+      }
+    },
+    handler: monitoringStatsController
   });
 }
 
@@ -1878,6 +1912,16 @@ async function createPagamento(data) {
 async function findPagamentoByCorrelationId(correlationId) {
   return prisma_default.pagamentos.findUnique({ where: { correlation_id: correlationId } });
 }
+async function findActivePagamentoByUser(usuarioId) {
+  return prisma_default.pagamentos.findFirst({
+    where: {
+      usuario_id: usuarioId,
+      status: "ACTIVE",
+      charge_expires_at: { gt: /* @__PURE__ */ new Date() }
+    },
+    orderBy: { created_at: "desc" }
+  });
+}
 async function findPagamentosByUser(usuarioId) {
   return prisma_default.pagamentos.findMany({
     where: { usuario_id: usuarioId },
@@ -1908,8 +1952,20 @@ WMKbqoG8MNpi/u3fp6zz0mcHCOSqYsPUUG19buW8bis5ZZ2IZgBObWSpTvJ0cnj6
 HKBAA82Jln+lGwS1MwIDAQAB
 -----END PUBLIC KEY-----`;
 async function initiatePaymentService(usuarioId) {
+  const existing = await findActivePagamentoByUser(usuarioId);
+  if (existing) {
+    return {
+      correlationId: existing.correlation_id,
+      qrCodeImage: existing.qrcode_image ?? "",
+      brCode: existing.brcode ?? "",
+      valorCentavos: existing.valor_centavos,
+      chargeExpiresAt: existing.charge_expires_at.toISOString()
+    };
+  }
   const correlationID = `premium-${usuarioId}-${Date.now()}`;
   const valorCentavos = Number(process.env.WOOVI_CHARGE_VALUE_CENTS ?? 3990);
+  const chargeExpirySeconds = Number(process.env.WOOVI_CHARGE_EXPIRY_SECONDS ?? 3600);
+  const chargeExpiresAt = new Date(Date.now() + chargeExpirySeconds * 1e3);
   const response = await fetch(WOOVI_API_URL, {
     method: "POST",
     headers: {
@@ -1932,13 +1988,17 @@ async function initiatePaymentService(usuarioId) {
     usuario_id: usuarioId,
     valor_centavos: valorCentavos,
     status: "ACTIVE",
+    brcode: data.charge.brCode,
+    qrcode_image: data.charge.qrCodeImage,
+    charge_expires_at: chargeExpiresAt,
     woovi_charge_id: data.charge.paymentLinkID
   });
   return {
     correlationId: correlationID,
     qrCodeImage: data.charge.qrCodeImage,
     brCode: data.charge.brCode,
-    valorCentavos
+    valorCentavos,
+    chargeExpiresAt: chargeExpiresAt.toISOString()
   };
 }
 async function getPaymentStatusService(correlationId, usuarioId) {
@@ -2040,7 +2100,8 @@ async function paymentRoutes(fastify) {
             correlationId: { type: "string" },
             qrCodeImage: { type: "string", description: "QR code em base64" },
             brCode: { type: "string", description: "PIX copia-e-cola" },
-            valorCentavos: { type: "number" }
+            valorCentavos: { type: "number" },
+            chargeExpiresAt: { type: "string", description: "ISO 8601 \u2014 quando a cobran\xE7a expira" }
           }
         }
       }
@@ -3253,6 +3314,7 @@ async function findMeProfile(usuarioId) {
       referral_code: true,
       referral_count: true,
       created_at: true,
+      discord_id: true,
       clear_chat_usage: {
         select: { messages_deleted: true, period_start_at: true }
       },
@@ -3328,7 +3390,8 @@ async function getMeService(usuarioId) {
       has_token: user.my_token !== null,
       is_valid: user.my_token?.is_valid ?? false
     },
-    clear_chat: clearChat
+    clear_chat: clearChat,
+    discord_login: user.discord_id !== null
   };
 }
 async function getReferralsService(usuarioId) {
@@ -3397,7 +3460,8 @@ async function meRoutes(fastify) {
                 period_start_at: { type: "string", nullable: true },
                 period_resets_at: { type: "string", nullable: true }
               }
-            }
+            },
+            discord_login: { type: "boolean", description: "Usu\xE1rio autenticado via Discord OAuth" }
           }
         }
       }

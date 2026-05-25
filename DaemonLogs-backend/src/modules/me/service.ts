@@ -61,6 +61,7 @@ export async function getMeService(usuarioId: number) {
       is_valid: user.my_token?.is_valid ?? false,
     },
     clear_chat: clearChat,
+    discord_login: user.discord_id !== null,
   }
 }
 

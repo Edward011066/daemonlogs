@@ -41,6 +41,7 @@ export async function meRoutes(fastify: FastifyInstance) {
                 period_resets_at: { type: 'string', nullable: true },
               },
             },
+            discord_login: { type: 'boolean', description: 'Usuário autenticado via Discord OAuth' },
           },
         },
       },

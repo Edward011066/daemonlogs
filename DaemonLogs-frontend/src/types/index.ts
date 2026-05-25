@@ -25,6 +25,7 @@ export interface User {
   referral_count: number
   clear_chat_quota: ClearChatQuota
   my_token: MyTokenStatus
+  discord_login: boolean
 }
 
 export interface Referral {
@@ -39,6 +40,11 @@ export interface MonitoringAccount {
   id: number
   is_valid: boolean
   created_at: string
+}
+
+export interface MonitoringStats {
+  my_active: number
+  total_active: number
 }
 
 // ── Targets ───────────────────────────────────────────────────────────────────
@@ -106,6 +112,7 @@ export interface PaymentInitiated {
   qrCodeImage: string
   brCode: string
   valorCentavos: number
+  chargeExpiresAt: string
 }
 
 export interface PaymentStatusResponse {

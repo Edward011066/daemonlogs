@@ -4,6 +4,7 @@ import {
   addMonitoringService,
   deleteMonitoringService,
   validateMonitoringService,
+  getMonitoringStatsService,
 } from './service.js'
 
 export async function listMonitoringController(request: FastifyRequest, reply: FastifyReply) {
@@ -32,3 +33,10 @@ export async function validateMonitoringController(request: FastifyRequest, repl
   const result = await validateMonitoringService(Number(id), usuarioId)
   return reply.send(result)
 }
+
+export async function monitoringStatsController(request: FastifyRequest, reply: FastifyReply) {
+  const usuarioId = request.user.sub
+  const stats = await getMonitoringStatsService(usuarioId)
+  return reply.send(stats)
+}
+

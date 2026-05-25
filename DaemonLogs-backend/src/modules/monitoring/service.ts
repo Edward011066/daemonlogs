@@ -7,6 +7,7 @@ import {
   createMonitoring,
   deleteMonitoring,
   updateMonitoringValidity,
+  countActiveMonitoring,
 } from './repository.js'
 
 export async function listMonitoringService(usuarioId: number) {
@@ -43,4 +44,13 @@ export async function validateMonitoringService(id: number, usuarioId: number) {
   await updateMonitoringValidity(id, isValid)
 
   return { id, is_valid: isValid }
+}
+
+export async function getMonitoringStatsService(usuarioId: number) {
+  const [userAccounts, totalActive] = await Promise.all([
+    findAllMonitoringByUser(usuarioId),
+    countActiveMonitoring(),
+  ])
+  const myActive = userAccounts.filter((a) => a.is_valid).length
+  return { my_active: myActive, total_active: totalActive }
 }

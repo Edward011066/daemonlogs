@@ -4,6 +4,7 @@ import {
   addMonitoringController,
   deleteMonitoringController,
   validateMonitoringController,
+  monitoringStatsController,
 } from './controller.js'
 
 export async function monitoringRoutes(fastify: FastifyInstance) {
@@ -102,5 +103,24 @@ export async function monitoringRoutes(fastify: FastifyInstance) {
       },
     },
     handler: validateMonitoringController,
+  })
+
+  fastify.get('/monitoring/stats', {
+    ...auth,
+    schema: {
+      tags: ['Monitoramento'],
+      summary: 'Estatísticas de contas de monitoramento',
+      security,
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            my_active: { type: 'number', description: 'Minhas contas ativas' },
+            total_active: { type: 'number', description: 'Total de contas ativas na plataforma' },
+          },
+        },
+      },
+    },
+    handler: monitoringStatsController,
   })
 }

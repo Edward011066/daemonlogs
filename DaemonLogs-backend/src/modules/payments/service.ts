@@ -1,6 +1,12 @@
 import crypto from 'node:crypto'
 import { AppError } from '../../utils/app-error.js'
-import { createPagamento, findPagamentoByCorrelationId, findPagamentosByUser, updatePagamentoStatus } from './repository.js'
+import {
+  createPagamento,
+  findPagamentoByCorrelationId,
+  findActivePagamentoByUser,
+  findPagamentosByUser,
+  updatePagamentoStatus,
+} from './repository.js'
 import { activateUserPremium } from '../plans/repository.js'
 
 const WOOVI_API_URL = 'https://api.woovi.com/api/v1/charge'
@@ -17,8 +23,22 @@ type WooviWebhookSignatures = {
 }
 
 export async function initiatePaymentService(usuarioId: number) {
+  // Verificar se já existe cobrança ACTIVE dentro do prazo de validade
+  const existing = await findActivePagamentoByUser(usuarioId)
+  if (existing) {
+    return {
+      correlationId: existing.correlation_id,
+      qrCodeImage: existing.qrcode_image ?? '',
+      brCode: existing.brcode ?? '',
+      valorCentavos: existing.valor_centavos,
+      chargeExpiresAt: existing.charge_expires_at!.toISOString(),
+    }
+  }
+
   const correlationID = `premium-${usuarioId}-${Date.now()}`
   const valorCentavos = Number(process.env.WOOVI_CHARGE_VALUE_CENTS ?? 3990)
+  const chargeExpirySeconds = Number(process.env.WOOVI_CHARGE_EXPIRY_SECONDS ?? 3600)
+  const chargeExpiresAt = new Date(Date.now() + chargeExpirySeconds * 1000)
 
   const response = await fetch(WOOVI_API_URL, {
     method: 'POST',
@@ -53,6 +73,9 @@ export async function initiatePaymentService(usuarioId: number) {
     usuario_id: usuarioId,
     valor_centavos: valorCentavos,
     status: 'ACTIVE',
+    brcode: data.charge.brCode,
+    qrcode_image: data.charge.qrCodeImage,
+    charge_expires_at: chargeExpiresAt,
     woovi_charge_id: data.charge.paymentLinkID,
   })
 
@@ -61,6 +84,7 @@ export async function initiatePaymentService(usuarioId: number) {
     qrCodeImage: data.charge.qrCodeImage,
     brCode: data.charge.brCode,
     valorCentavos,
+    chargeExpiresAt: chargeExpiresAt.toISOString(),
   }
 }
 

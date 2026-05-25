@@ -1,11 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { apiFetch } from "@/lib/api"
-import type { MonitoringAccount } from "@/types"
+import type { MonitoringAccount, MonitoringStats } from "@/types"
 
 export function useMonitoring() {
   return useQuery({
     queryKey: ["monitoring"],
     queryFn: () => apiFetch<MonitoringAccount[]>("/monitoring"),
+  })
+}
+
+export function useMonitoringStats() {
+  return useQuery({
+    queryKey: ["monitoring", "stats"],
+    queryFn: () => apiFetch<MonitoringStats>("/monitoring/stats"),
   })
 }
 

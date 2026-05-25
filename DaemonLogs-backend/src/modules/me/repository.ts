@@ -13,6 +13,7 @@ export async function findMeProfile(usuarioId: number) {
       referral_code: true,
       referral_count: true,
       created_at: true,
+      discord_id: true,
       clear_chat_usage: {
         select: { messages_deleted: true, period_start_at: true },
       },

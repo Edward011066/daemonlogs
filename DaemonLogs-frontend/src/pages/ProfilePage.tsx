@@ -31,7 +31,7 @@ export function ProfilePage() {
           {user?.clear_chat_quota && <QuotaDisplay quota={user.clear_chat_quota} />}
         </div>
         <div className="space-y-4">
-          <ChangePasswordForm />
+          {!user?.discord_login && <ChangePasswordForm />}
           <ReferralSection />
         </div>
       </div>

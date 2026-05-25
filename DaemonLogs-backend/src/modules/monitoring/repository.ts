@@ -33,3 +33,7 @@ export async function findAllValidTokens() {
     select: { id: true, token: true },
   })
 }
+
+export async function countActiveMonitoring() {
+  return prisma.contas_monitoramento.count({ where: { is_valid: true } })
+}

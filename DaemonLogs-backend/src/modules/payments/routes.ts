@@ -19,6 +19,7 @@ export async function paymentRoutes(fastify: FastifyInstance) {
             qrCodeImage: { type: 'string', description: 'QR code em base64' },
             brCode: { type: 'string', description: 'PIX copia-e-cola' },
             valorCentavos: { type: 'number' },
+            chargeExpiresAt: { type: 'string', description: 'ISO 8601 — quando a cobrança expira' },
           },
         },
       },
