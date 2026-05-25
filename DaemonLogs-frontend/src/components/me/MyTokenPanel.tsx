@@ -66,7 +66,7 @@ export function MyTokenPanel() {
         ) : myToken ? (
           <div className="space-y-3">
             <div className="flex items-center gap-3">
-              {myToken.discord_user.avatar ? (
+              {myToken.discord_user?.avatar ? (
                 <img
                   src={`https://cdn.discordapp.com/avatars/${myToken.discord_user.id}/${myToken.discord_user.avatar}.png?size=32`}
                   alt={myToken.discord_user.username}
@@ -78,7 +78,7 @@ export function MyTokenPanel() {
                 </div>
               )}
               <div>
-                <p className="text-sm font-medium text-foreground">{myToken.discord_user.username}</p>
+                <p className="text-sm font-medium text-foreground">{myToken.discord_user?.username ?? "Usuário desconhecido"}</p>
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <StatusDot active={myToken.is_valid} />
                   {myToken.is_valid ? "Token válido" : "Token inválido"}

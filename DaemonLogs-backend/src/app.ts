@@ -9,7 +9,6 @@ import prisma from './plugins/prisma.js'
 import { authRoutes } from './modules/auth/routes.js'
 import { monitoringRoutes } from './modules/monitoring/routes.js'
 import { targetRoutes } from './modules/targets/routes.js'
-import { messageRoutes } from './modules/messages/routes.js'
 import { eventRoutes } from './modules/events/routes.js'
 import { serverRoutes } from './modules/servers/routes.js'
 import { paymentRoutes } from './modules/payments/routes.js'
@@ -65,7 +64,6 @@ export async function buildApp() {
   await fastify.register(authRoutes)
   await fastify.register(monitoringRoutes)
   await fastify.register(targetRoutes)
-  await fastify.register(messageRoutes)
   await fastify.register(eventRoutes)
   await fastify.register(serverRoutes)
   await fastify.register(paymentRoutes)

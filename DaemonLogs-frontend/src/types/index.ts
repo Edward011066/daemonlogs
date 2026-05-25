@@ -133,7 +133,7 @@ export interface MyToken {
     id: string
     username: string
     avatar: string | null
-  }
+  } | null
 }
 
 // ── Tools ─────────────────────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { listEventsController } from './controller.js'
 
-const TIPOS_EVENTO = ['MESSAGE_EDIT', 'MESSAGE_DELETE', 'VOICE_JOIN', 'VOICE_LEAVE', 'VOICE_SWITCH', 'MENTION']
+const TIPOS_EVENTO = ['MESSAGE_SENT', 'MESSAGE_EDIT', 'MESSAGE_DELETE', 'VOICE_JOIN', 'VOICE_LEAVE', 'VOICE_SWITCH', 'MENTION']
 
 export async function eventRoutes(fastify: FastifyInstance) {
   fastify.get('/events', {
@@ -35,7 +35,12 @@ export async function eventRoutes(fastify: FastifyInstance) {
                 properties: {
                   id: { type: 'number' },
                   tipo: { type: 'string' },
-                  dados: {},
+                  dados: {
+                    type: 'object',
+                    nullable: true,
+                    description: 'Para MESSAGE_SENT: { message_id, conteudo, link_mensagem, guild_id, guild_name, channel_id, channel_name }. Para demais tipos: dados do evento.',
+                    additionalProperties: true,
+                  },
                   created_at: { type: 'string' },
                   conta_alvo: {
                     type: 'object',
