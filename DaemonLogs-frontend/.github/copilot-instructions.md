@@ -1,7 +1,8 @@
 # DaemonLogs — Frontend
 
 React 18 + Vite + TypeScript frontend para a API REST de monitoramento Discord.
-API documentada em [FRONTEND DOCUMENTAÇÃO.md](../FRONTEND%20DOCUMENTAÇÃO.md) e spec OpenAPI em [api-endpoints.json](../api-endpoints.json).
+Contrato primário da API: [api-endpoints.json](../api-endpoints.json).
+Documentação complementar: [FRONTEND DOCUMENTAÇÃO.md](../FRONTEND%20DOCUMENTAÇÃO.md) e [FRONTEND.md](../FRONTEND.md).
 
 ## Stack
 
@@ -46,10 +47,18 @@ src/
 3. **`cn()` sempre** — use `import { cn } from "@/lib/utils"` para compor classes; nunca concatene strings manualmente.
 4. **Nunca use `style={}`** para cores ou layout que possam ser expressos em Tailwind.
 5. **Nunca chame `fetch()` diretamente** — use `apiFetch()` de `@/lib/api`.
-6. **Nunca invente endpoints** — consulte `FRONTEND DOCUMENTAÇÃO.md` ou `api-endpoints.json`.
+6. **Nunca invente endpoints ou campos de API** — consulte `api-endpoints.json` primeiro. `FRONTEND DOCUMENTAÇÃO.md` e `FRONTEND.md` são apoio secundário.
 7. **Sem emoji de caractere Unicode** — use exclusivamente ícones `lucide-react`.
 8. **Cores via tokens** — nunca escreva `#bd93f9` ou `rgba(...)` em JSX; use as classes Tailwind configuradas.
-9. **Consulte `api-endpoints.json` SEMPRE** — antes de criar qualquer hook, query, mutation ou chamada `apiFetch()`, abra `api-endpoints.json` e verifique o path exato, os campos de request/response e os status codes. Os campos retornados pela API **podem diferir** dos nomes intuitivos (ex: `tipo` em vez de `event_type`, `dados` em vez de `metadata`, `conta_alvo` em vez de `target`). Nunca assuma nomes de campos — sempre confirme no spec.
+9. **Consulte `api-endpoints.json` SEMPRE** — antes de criar qualquer hook, query, mutation, tipo compartilhado ou chamada `apiFetch()`, abra `api-endpoints.json` e verifique o path exato, os campos de request/response e os status codes. Os campos retornados pela API **podem diferir** dos nomes intuitivos (ex: `tipo` em vez de `event_type`, `dados` em vez de `metadata`, `conta_alvo` em vez de `target`, `clear_chat` em vez de `clear_chat_quota`).
+10. **Quando a spec estiver incompleta, não invente** — procure consumidores e tipos já validados no repositório e use o menor contrato cru possível. Se a dúvida persistir, pare e peça confirmação em vez de espalhar campos especulativos como `display_name`, `avatar_url` ou `discord_user` em tipos compartilhados.
+
+## Fonte de Verdade da API
+
+- `api-endpoints.json` define **paths, query params, request bodies, response fields e status codes**.
+- `FRONTEND DOCUMENTAÇÃO.md` e `FRONTEND.md` servem como contexto de fluxo, UX e operação, mas **não substituem** o contrato da spec.
+- Se houver conflito entre a spec e a documentação textual, **a spec vence**.
+- Se a spec não trouxer schema suficiente para uma rota já usada no app, não promova campos intuitivos para `src/types/index.ts` sem validação explícita.
 
 ## Gotchas críticos da API
 

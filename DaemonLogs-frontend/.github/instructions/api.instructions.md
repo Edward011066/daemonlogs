@@ -8,6 +8,31 @@ applyTo: "src/lib/api.ts,src/hooks/**,src/lib/**"
 Documentação completa: [FRONTEND DOCUMENTAÇÃO.md](../../FRONTEND%20DOCUMENTAÇÃO.md)
 Spec OpenAPI: [api-endpoints.json](../../api-endpoints.json)
 
+## Fonte primária de contrato
+
+- `api-endpoints.json` é a fonte primária para path, query param, body, status code e nomes de campo.
+- `FRONTEND.md` e `FRONTEND DOCUMENTAÇÃO.md` são contexto secundário para fluxo e UX.
+- Se houver conflito entre texto e spec, a spec vence.
+- Se a spec estiver incompleta para uma rota já usada no app, não invente campos. Procure consumidores/tipos já validados e use o menor contrato cru possível. Se a dúvida continuar, pare e peça confirmação.
+
+## Tipos compartilhados devem espelhar a API crua
+
+Em `src/types/index.ts`, preserve os nomes reais do payload quando o tipo representar a resposta do backend:
+
+```ts
+// ✅ nomes crus da API
+type Event = { tipo: string; dados: unknown; conta_alvo: { discord_user_id: string } }
+type Me = { clear_chat: { messages_deleted: number | null } | null }
+type Target = { username_global: string | null }
+
+// ❌ aliases intuitivos dentro do contrato cru
+type Event = { eventType: string; metadata: unknown; target: { discordUserId: string } }
+type Me = { clear_chat_quota: { deletions_used: number } }
+type Target = { display_name: string; avatar_url: string | null }
+```
+
+Se a UI precisar de nomes amigáveis, derive localmente em mapper, selector ou componente.
+
 ## `apiFetch` — único ponto de acesso
 
 Toda chamada à API passa por `src/lib/api.ts`. **Nunca use `fetch()` diretamente.**
@@ -196,3 +221,10 @@ queryKey: ["payments", "status", correlationId]
 
 // Nunca use strings construídas: queryKey: [`events-${from}`]
 ```
+
+## O que a IA NUNCA deve fazer
+
+- Tratar `FRONTEND.md` ou `FRONTEND DOCUMENTAÇÃO.md` como autoridade maior que `api-endpoints.json`
+- Renomear campos crus da API dentro de tipos compartilhados sem um mapper explícito
+- Inventar campos ausentes na spec, especialmente em `/me`, `/targets`, `/my-token`, `/me/referrals` e `/events`
+- Espalhar contratos especulativos do backend por múltiplos componentes só porque um consumer local usa um alias intuitivo

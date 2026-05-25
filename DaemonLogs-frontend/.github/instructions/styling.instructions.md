@@ -7,7 +7,7 @@ applyTo: "src/**/*.tsx,src/**/*.css,tailwind.config.ts"
 
 ## Tokens de cor — Dracula (toned down)
 
-O tema é inspirado no Dracula, com menos saturação e sem efeitos de brilho. As cores são definidas como variáveis CSS no `globals.css` e expostas pelo `tailwind.config.ts`:
+O tema é inspirado no Dracula, com menos saturação e sem efeitos de brilho. As cores são definidas como variáveis CSS em `src/index.css` e expostas pelo `tailwind.config.ts`:
 
 | Token Tailwind | Uso |
 |---------------|-----|
@@ -26,7 +26,7 @@ O tema é inspirado no Dracula, com menos saturação e sem efeitos de brilho. A
 **Referência de valores** (para configurar `tailwind.config.ts`):
 
 ```css
-/* globals.css — variáveis HSL para shadcn/ui */
+/* src/index.css — variáveis HSL para shadcn/ui */
 :root {
   --background:   231 15% 18%;   /* #282a36 */
   --surface:      232 16% 14%;   /* #21222c */
@@ -97,13 +97,23 @@ Eventos da API têm tipos predefinidos. Use sempre as mesmas classes:
 
 ```tsx
 const EVENT_CLASSES = {
-  voice_join:     "bg-info/10 text-info border-info/20",
-  voice_leave:    "bg-info/10 text-info border-info/20",
-  voice_move:     "bg-info/10 text-info border-info/20",
-  message_edit:   "bg-warning/10 text-warning border-warning/20",
-  message_delete: "bg-destructive/10 text-destructive border-destructive/20",
-  mention:        "bg-accent/10 text-accent border-accent/20",
+  VOICE_JOIN:     "bg-info/10 text-info border-info/20",
+  VOICE_LEAVE:    "bg-info/10 text-info border-info/20",
+  VOICE_SWITCH:   "bg-info/10 text-info border-info/20",
+  MESSAGE_SENT:   "bg-success/10 text-success border-success/20",
+  MESSAGE_EDIT:   "bg-warning/10 text-warning border-warning/20",
+  MESSAGE_DELETE: "bg-destructive/10 text-destructive border-destructive/20",
+  MENTION:        "bg-accent/10 text-accent border-accent/20",
 } as const
+```
+
+### Exceção rara para `style={{}}`
+Use `style` apenas para valores realmente dinâmicos de runtime que não podem ser representados por token ou classe fixa, como largura percentual de progress bar:
+
+```tsx
+<div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+  <div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
+</div>
 ```
 
 ## Badge de plano — padrão fixo
@@ -131,7 +141,7 @@ const PLAN_CLASSES = {
 
 ## Proibido
 
-- `style={{}}` para qualquer propriedade que o Tailwind suporte
+- `style={{}}` para cor, layout estático ou valores que possam ser expressos por classes/tokens Tailwind
 - Valores arbitrários de cor `text-[#...]` ou `bg-[#...]`
 - Gradientes inline (`background: linear-gradient(...)`)
 - Efeitos de brilho/glow (box-shadow coloridos em componentes de negócio)

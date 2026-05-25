@@ -1,11 +1,25 @@
 ---
-description: "Use when: criar página de login, criar formulário de registro, criar formulário de ativação, criar recuperação de senha, criar callback OAuth, configurar roteamento de autenticação, implementar rota protegida, tratar AUTH_MODE, criar DiscordLoginButton, criar GuestRoute, criar ProtectedRoute, trabalhar em src/pages/auth/**, src/components/auth/**."
-applyTo: "src/pages/auth/**,src/components/auth/**"
+description: "Use when: criar página de login, criar formulário de registro, criar formulário de ativação, criar recuperação de senha, criar callback OAuth, configurar roteamento de autenticação, implementar rota protegida, tratar AUTH_MODE, ajustar redirect 401, editar logout, criar DiscordLoginButton, criar GuestRoute, criar ProtectedRoute, trabalhar em src/pages/auth/**, src/components/auth/**, src/router.tsx, src/lib/auth.ts, src/lib/api.ts, src/components/layout/Header.tsx."
+applyTo: "src/pages/auth/**,src/components/auth/**,src/router.tsx,src/lib/auth.ts,src/lib/api.ts,src/components/layout/Header.tsx"
 ---
 
 # Autenticação — Roteamento e Fluxos
 
 Documentação completa: [FRONTEND DOCUMENTAÇÃO.md](../../FRONTEND%20DOCUMENTAÇÃO.md#autenticação)
+
+## Fonte primária
+
+- Para rotas, query params, request/response e status codes, consulte primeiro [api-endpoints.json](../../api-endpoints.json).
+- `FRONTEND.md` e `FRONTEND DOCUMENTAÇÃO.md` são apoio narrativo e podem ficar defasados.
+- Se um endpoint de auth não estiver documentado na spec atual, trate-o como contrato não confirmado. Não crie novos usos nem novos campos com base apenas em prosa.
+
+## Arquivos que realmente controlam auth neste frontend
+
+- `src/router.tsx` — roteamento público, callback OAuth e proteção de páginas
+- `src/lib/auth.ts` — leitura/escrita do JWT e `VITE_AUTH_MODE`
+- `src/lib/api.ts` — redirect global quando a API retorna `401`
+- `src/components/layout/Header.tsx` — ação de logout do usuário autenticado
+- `src/pages/auth/**` e `src/components/auth/**` — telas e formulários
 
 ## AUTH_MODE — descoberta pelo frontend
 
@@ -30,27 +44,31 @@ Todas as páginas de auth ficam sob `/auth/`. Configure no router principal:
 
 ```tsx
 // src/router.tsx
-import { createBrowserRouter } from "react-router-dom"
+import { Navigate, createBrowserRouter } from "react-router-dom"
 
 export const router = createBrowserRouter([
-  {
-    path: "/auth",
-    element: <GuestRoute />,           // redireciona logados para /
-    children: [
-      { path: "login",           element: <LoginPage /> },
-      { path: "register",        element: <RegisterPage /> },
-      { path: "activate",        element: <ActivatePage /> },
-      { path: "forgot-password", element: <ForgotPasswordPage /> },
-      { path: "reset-password",  element: <ResetPasswordPage /> },
-    ],
-  },
-  // AuthCallbackPage fica FORA do GuestRoute — precisa executar mesmo com token
+  { path: "/", element: <LandingPage /> },
   { path: "/auth/callback", element: <AuthCallbackPage /> },
   {
-    path: "/",
-    element: <ProtectedRoute />,       // redireciona não-logados para /auth/login
-    children: [/* rotas protegidas */],
+    element: <GuestRoute />, // redireciona logados para /dashboard
+    children: [
+      { path: "/auth/login", element: <LoginPage /> },
+      { path: "/auth/register", element: <RegisterPage /> },
+      { path: "/auth/activate", element: <ActivatePage /> },
+      { path: "/auth/forgot-password", element: <ForgotPasswordPage /> },
+      { path: "/auth/reset-password", element: <ResetPasswordPage /> },
+    ],
   },
+  {
+    element: <ProtectedRoute />, // redireciona não-logados para /auth/login
+    children: [
+      {
+        element: <AppShell />,
+        children: [/* páginas protegidas como /dashboard, /events, /profile */],
+      },
+    ],
+  },
+  { path: "*", element: <Navigate to="/" replace /> },
 ])
 ```
 
@@ -168,7 +186,7 @@ export function ProtectedRoute() {
 
 // src/components/auth/GuestRoute.tsx
 export function GuestRoute() {
-  return getToken() ? <Navigate to="/" replace /> : <Outlet />
+  return getToken() ? <Navigate to="/dashboard" replace /> : <Outlet />
 }
 ```
 
@@ -194,3 +212,4 @@ Sessões Discord OAuth **não** têm restrição de IP — `SESSION_IP_BLOCKED` 
 - Colocar `AuthCallbackPage` dentro do `GuestRoute` — bloqueia o callback quando há token antigo
 - Exibir formulários de `RegisterPage` ou `ForgotPasswordPage` na `LoginPage` em modo `discord`
 - Revelar se um e-mail existe ou não na tela de recuperação de senha
+- Alterar `src/lib/api.ts` ou `src/components/layout/Header.tsx` sem verificar primeiro se o endpoint e o status code continuam documentados em `api-endpoints.json`

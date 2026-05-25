@@ -17,31 +17,34 @@ Antes de qualquer componente novo, verifique se já existe em:
 ```tsx
 // src/components/events/EventBadge.tsx
 
+import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import type { EventType } from "@/types"
 
 interface EventBadgeProps {
-  type: "voice_join" | "voice_leave" | "voice_move" | "message_edit" | "message_delete" | "mention"
+  type: EventType
   className?: string
 }
 
 const EVENT_VARIANT: Record<EventBadgeProps["type"], string> = {
-  voice_join:     "bg-info/10 text-info border-info/20",
-  voice_leave:    "bg-info/10 text-info border-info/20",
-  voice_move:     "bg-info/10 text-info border-info/20",
-  message_edit:   "bg-warning/10 text-warning border-warning/20",
-  message_delete: "bg-destructive/10 text-destructive border-destructive/20",
-  mention:        "bg-accent/10 text-accent border-accent/20",
+  VOICE_JOIN:     "bg-info/10 text-info border-info/20",
+  VOICE_LEAVE:    "bg-info/10 text-info border-info/20",
+  VOICE_SWITCH:   "bg-info/10 text-info border-info/20",
+  MESSAGE_SENT:   "bg-success/10 text-success border-success/20",
+  MESSAGE_EDIT:   "bg-warning/10 text-warning border-warning/20",
+  MESSAGE_DELETE: "bg-destructive/10 text-destructive border-destructive/20",
+  MENTION:        "bg-accent/10 text-accent border-accent/20",
 }
 
 export function EventBadge({ type, className }: EventBadgeProps) {
   return (
-    <span className={cn(
-      "inline-flex items-center px-2 py-0.5 rounded text-xs font-mono border",
+    <Badge variant="outline" className={cn(
+      "inline-flex items-center px-2 py-0.5 text-xs font-mono",
       EVENT_VARIANT[type],
       className
     )}>
-      {type.replace("_", " ")}
-    </span>
+      {type}
+    </Badge>
   )
 }
 ```
@@ -51,6 +54,7 @@ export function EventBadge({ type, className }: EventBadgeProps) {
 - `cn()` para compor classes condicionais
 - `className` prop para extensibilidade
 - Interface tipada separada
+- Para enums vindos da API, use os valores reais do contrato (`VOICE_JOIN`, `VOICE_LEAVE`, `VOICE_SWITCH`, etc.), nunca versões inventadas em lowercase
 
 ## Padrões obrigatórios
 

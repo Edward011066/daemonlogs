@@ -2,6 +2,8 @@
 
 Documento para integração do frontend com a API REST. Atualizado em maio de 2026.
 
+> Importante: para endpoints, parâmetros, status codes e nomes de campos de request/response, a fonte primária é [api-endpoints.json](./api-endpoints.json). Este documento é contexto complementar e pode ficar defasado em relação à spec.
+
 ---
 
 ## Configuração Base
