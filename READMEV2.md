@@ -639,6 +639,10 @@ Segundo a documentacao oficial atual do Discord:
 - o backend busca o perfil do usuario
 - o backend gera um JWT proprio do sistema
 
+No codigo atual deste projeto, o backend gera a URL de autorizacao sozinho e pede apenas os escopos `identify` e `email`.
+
+Em outras palavras: este projeto usa o Discord para login do usuario, nao para instalar bot, nao para pedir permissao de servidor e nao para criar webhook do Discord.
+
 ### Scopes usados por este projeto
 
 No codigo atual, o projeto pede apenas:
@@ -646,51 +650,280 @@ No codigo atual, o projeto pede apenas:
 - `identify`
 - `email`
 
-Isso esta de acordo com o uso real do sistema.
+Isso esta de acordo com a documentacao oficial atual do Discord:
 
-### Onde configurar no portal do Discord
+- `identify` permite ler o perfil basico do usuario
+- `email` permite que `/users/@me` retorne o email do usuario
+
+### Quais scopes marcar no Discord
+
+Para este projeto, se voce abrir o `OAuth2 URL Generator` do Discord so para inspecionar ou testar, marque apenas:
+
+- `identify`
+- `email`
+
+Nao marque estes escopos para este login:
+
+- `bot`
+- `applications.commands`
+- `guilds.join`
+- `webhook.incoming`
+- qualquer outro scope que voce nao use de verdade
+
+Se voce marcar escopos a mais, o fluxo pode pedir consentimentos desnecessarios e deixar a configuracao mais confusa.
+
+### O que fazer no portal do Discord, passo a passo
 
 1. Entre em `https://discord.com/developers/applications`
-2. Crie ou abra sua aplicacao
-3. Copie `Application ID` -> vai em `DISCORD_CLIENT_ID`
-4. Copie `Client Secret` -> vai em `DISCORD_CLIENT_SECRET`
-5. Va em `OAuth2` -> `Redirects`
-6. Cadastre exatamente a URL do seu callback
+2. Clique em `New Application`
+3. Dê um nome para a aplicacao
+4. Abra a aplicacao criada
 
-### URL correta do callback no deploy unificado
+Agora voce vai lidar com tres coisas diferentes:
+
+1. `Application ID`
+   E o identificador publico da sua app.
+   Voce copia do Discord para o `.env` em `DISCORD_CLIENT_ID`.
+
+2. `Client Secret`
+   E o segredo privado da sua app.
+   Voce copia do Discord para o `.env` em `DISCORD_CLIENT_SECRET`.
+
+3. `Redirect URI`
+   E a URL para onde o Discord vai devolver o usuario depois do login.
+   Essa URL nao nasce pronta no portal. Voce define com base no seu deploy e registra a mesma string nos dois lugares: no seu `.env` e na lista de Redirects do Discord.
+
+### Onde achar cada campo no portal
+
+#### Application ID
+
+No portal do Discord:
+
+- abra sua app
+- va em `General Information`
+- copie `Application ID`
+
+Cole no `.env`:
+
+```env
+DISCORD_CLIENT_ID=cole_aqui_o_application_id
+```
+
+#### Client Secret
+
+No portal do Discord:
+
+- abra sua app
+- va em `OAuth2`
+- copie `Client Secret`
+
+Cole no `.env`:
+
+```env
+DISCORD_CLIENT_SECRET=cole_aqui_o_client_secret
+```
+
+### A diferenca entre as duas URLs importantes deste projeto
+
+Este projeto usa duas URLs diferentes, e elas confundem muita gente.
+
+#### 1. `DISCORD_REDIRECT_URI`
+
+Esta e a URL de callback do backend.
+
+Fluxo:
+
+- usuario clica em login com Discord
+- vai para o Discord
+- o Discord devolve o usuario para esta URL
+- esta URL precisa estar registrada no portal do Discord
+
+Deploy unificado:
+
+```env
+DISCORD_REDIRECT_URI=https://seudominio.com/api/auth/discord/callback
+```
+
+Deploy separado:
+
+```env
+DISCORD_REDIRECT_URI=https://api.seudominio.com/auth/discord/callback
+```
+
+#### 2. `DISCORD_OAUTH_FRONTEND_REDIRECT`
+
+Esta e a URL do frontend para onde o seu proprio backend redireciona depois que ja trocou o `code` por token e criou o JWT.
+
+O Discord nao chama essa URL diretamente.
+
+Ela nao entra na lista de Redirects do portal do Discord.
+
+Ela existe so dentro do seu sistema.
+
+Deploy unificado:
+
+```env
+DISCORD_OAUTH_FRONTEND_REDIRECT=https://seudominio.com/auth/callback
+```
+
+Deploy separado:
+
+```env
+DISCORD_OAUTH_FRONTEND_REDIRECT=https://app.seudominio.com/auth/callback
+```
+
+Resumo simples:
+
+- `DISCORD_REDIRECT_URI` = Discord -> seu backend
+- `DISCORD_OAUTH_FRONTEND_REDIRECT` = seu backend -> seu frontend
+
+### O que copiar de la para ca e o que copiar daqui para la
+
+#### Do portal do Discord para o `.env`
+
+Voce copia:
+
+- `Application ID` -> `DISCORD_CLIENT_ID`
+- `Client Secret` -> `DISCORD_CLIENT_SECRET`
+
+#### Do seu planejamento de deploy para o `.env`
+
+Voce define:
+
+- `DISCORD_REDIRECT_URI`
+- `DISCORD_OAUTH_FRONTEND_REDIRECT`
+
+Essas URLs dependem do seu dominio e da sua arquitetura.
+
+#### Do `.env` para o portal do Discord
+
+Depois de definir a URL correta de callback no `.env`, voce copia exatamente o valor de `DISCORD_REDIRECT_URI` e cadastra essa mesma string na lista de Redirects do portal.
+
+Ou seja:
+
+- `DISCORD_CLIENT_ID` e `DISCORD_CLIENT_SECRET`: Discord -> projeto
+- `DISCORD_REDIRECT_URI`: projeto -> Discord e projeto
+- `DISCORD_OAUTH_FRONTEND_REDIRECT`: so projeto
+
+### Onde configurar o Redirect URI no portal
+
+1. No portal da app, va em `OAuth2`
+2. Procure a area de `Redirects`
+3. Clique para adicionar uma nova Redirect URI
+4. Cole exatamente o valor de `DISCORD_REDIRECT_URI`
+5. Salve
+
+Exemplo de deploy unificado:
 
 ```text
 https://seudominio.com/api/auth/discord/callback
 ```
 
-### URL correta do frontend apos login
+Exemplo de deploy separado:
 
 ```text
-https://seudominio.com/auth/callback
+https://api.seudominio.com/auth/discord/callback
 ```
 
-Esse detalhe e critico.
+Se houver uma letra, barra ou protocolo diferente entre o portal e o `.env`, o login quebra.
 
-O frontend deste projeto le o token na rota `/auth/callback`, nao na raiz `/`.
+### O que e a URL gerada no `OAuth2 URL Generator`
 
-Por isso o valor correto e:
+No portal do Discord existe uma area chamada `OAuth2 URL Generator`.
 
-```env
-DISCORD_OAUTH_FRONTEND_REDIRECT=https://seudominio.com/auth/callback
+Ela gera uma URL parecida com isto:
+
+```text
+https://discord.com/oauth2/authorize?client_id=...&scope=identify%20email&response_type=code&redirect_uri=...
 ```
 
-### Checklist Discord no deploy unificado
+Essa URL e apenas o link de autorizacao do Discord.
+
+Ela nao substitui nenhuma variavel do `.env`.
+
+Voce nao cola essa URL inteira em `DISCORD_CLIENT_ID`, nem em `DISCORD_REDIRECT_URI`, nem em `DISCORD_OAUTH_FRONTEND_REDIRECT`.
+
+Neste projeto, essa URL normalmente nem precisa ser usada manualmente, porque o backend ja a gera sozinho na rota de login do Discord.
+
+Entao a regra pratica e:
+
+- use o `OAuth2 URL Generator` apenas para entender ou testar
+- nao use a URL gerada como configuracao do projeto
+- nao marque scopes extras ali
+
+### O que pode ser ignorado no portal para este projeto
+
+A documentacao oficial atual do Discord fala bastante sobre:
+
+- `Install Links`
+- `Discord Provided Link`
+- `Custom URL`
+- `bot`
+- `applications.commands`
+- `Installation Contexts`
+
+Isso costuma ser importante para apps instalaveis, slash commands e bots.
+
+Para este fluxo especifico de login do DaemonLogs, isso nao e o foco.
+
+Se sua meta e apenas autenticar usuario via Discord, foque apenas em:
+
+- criar a app
+- copiar `Application ID`
+- copiar `Client Secret`
+- registrar o `DISCORD_REDIRECT_URI`
+- manter os scopes em `identify` e `email`
+
+### Valores corretos para cada cenario
+
+#### Deploy unificado
 
 ```env
 AUTH_MODE=discord
 VITE_AUTH_MODE=discord
-DISCORD_CLIENT_ID=...
-DISCORD_CLIENT_SECRET=...
+DISCORD_CLIENT_ID=seu_client_id
+DISCORD_CLIENT_SECRET=seu_client_secret
 DISCORD_REDIRECT_URI=https://seudominio.com/api/auth/discord/callback
 DISCORD_OAUTH_FRONTEND_REDIRECT=https://seudominio.com/auth/callback
 ```
 
-Se qualquer uma dessas URLs estiver errada, o login quebra.
+#### Deploy separado
+
+```env
+AUTH_MODE=discord
+VITE_AUTH_MODE=discord
+DISCORD_CLIENT_ID=seu_client_id
+DISCORD_CLIENT_SECRET=seu_client_secret
+DISCORD_REDIRECT_URI=https://api.seudominio.com/auth/discord/callback
+DISCORD_OAUTH_FRONTEND_REDIRECT=https://app.seudominio.com/auth/callback
+```
+
+### Como testar se a configuracao do Discord ficou certa
+
+Depois do sistema no ar:
+
+1. abra a pagina de login do frontend
+2. clique em login com Discord
+3. veja se o navegador vai para o Discord
+4. autorize a app
+5. confirme se voce volta para `/auth/callback`
+6. confirme se o frontend te leva ao dashboard
+
+Se quiser testar pela URL publica do backend:
+
+- deploy unificado: abra `https://seudominio.com/api/auth/discord`
+- deploy separado: abra `https://api.seudominio.com/auth/discord`
+
+### Checklist final do bloco Discord
+
+- `AUTH_MODE=discord`
+- `VITE_AUTH_MODE=discord`
+- `DISCORD_CLIENT_ID` veio do portal do Discord
+- `DISCORD_CLIENT_SECRET` veio do portal do Discord
+- `DISCORD_REDIRECT_URI` foi definido por voce e cadastrado igualzinho no portal
+- `DISCORD_OAUTH_FRONTEND_REDIRECT` foi definido por voce e aponta para `/auth/callback`
+- scopes usados pelo projeto: apenas `identify` e `email`
+- voce nao usou a URL inteira do `OAuth2 URL Generator` como valor de `.env`
 
 ---
 
