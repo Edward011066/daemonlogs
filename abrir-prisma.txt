@@ -1,4 +1,9 @@
 1. Certifique-se de que o Docker esteja em execução e que o serviço da API esteja ativo. (docker ps)
 2. caso contrário execute com docker compose up --build -d 
-3. execute o comando: docker compose exec api npx prisma studio --port 5555 --browser none
-4. acesse o endereço http://(ip ou dominio):5555 para visualizar o Prisma Studio e interagir com o banco de dados.
+3. docker compose exec api sh
+4. execute dentro do container: PASS=$(node -e 'process.stdout.write(encodeURIComponent(process.env.POSTGRES_PASSWORD))')
+5. USER=$(node -e 'process.stdout.write(encodeURIComponent(process.env.POSTGRES_USER))')
+6. DB=${POSTGRES_DB:-daemonlogs_db}
+7. export DATABASE_URL="postgresql://$USER:$PASS@postgres:5432/$DB"
+8. npx prisma studio --port 5555 --browser none
+9. acesse o endereço http://(ip ou dominio):5555 para visualizar o Prisma Studio e interagir com o banco de dados.
