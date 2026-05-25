@@ -18,9 +18,11 @@ Se voce nunca configurou um `.env`, nunca subiu um projeto com Docker ou nao sab
 8. [Checklist antes de subir tudo](#checklist-antes-de-subir-tudo)
 9. [Comando para subir a stack completa](#comando-para-subir-a-stack-completa)
 10. [Como saber se deu tudo certo](#como-saber-se-deu-tudo-certo)
-11. [Deploy em maquinas separadas](#deploy-em-maquinas-separadas)
-12. [Erros comuns e como resolver](#erros-comuns-e-como-resolver)
-13. [Curiosidades uteis](#curiosidades-uteis)
+11. [Configurando o Nginx na VPS (HTTPS e dominio)](#configurando-o-nginx-na-vps-https-e-dominio)
+12. [Configurando o Woovi PIX (webhook)](#configurando-o-woovi-pix-webhook)
+13. [Deploy em maquinas separadas](#deploy-em-maquinas-separadas)
+14. [Erros comuns e como resolver](#erros-comuns-e-como-resolver)
+15. [Curiosidades uteis](#curiosidades-uteis)
 
 ---
 
@@ -826,6 +828,299 @@ http://localhost
 Se abrir a tela inicial, o frontend subiu.
 
 Se o login funcionar, a comunicacao com o backend esta funcionando.
+
+### O que fazer se algo der errado? (Como ver os logs)
+
+Se um container nao subir ou estiver com status "unhealthy", o primeiro passo e olhar os logs.
+
+Na raiz do projeto, rode:
+
+```bash
+# Ver os logs da API (backend)
+docker compose logs api
+
+# Ver os logs do frontend
+docker compose logs frontend
+
+# Ver os logs do banco de dados
+docker compose logs postgres
+```
+
+Para ver os logs em tempo real (eles vao aparecendo na tela conforme acontecem), adicione `-f`:
+
+```bash
+# Ver logs da API em tempo real
+docker compose logs -f api
+```
+
+Os logs geralmente mostram a mensagem de erro exata, como "senha do banco invalida" ou "variavel de ambiente faltando".
+
+---
+
+## Configurando o Nginx na VPS (HTTPS e dominio)
+
+### O que e nginx
+
+Nginx (pronuncia-se "engine-x") e um servidor web que funciona como intermediario entre os usuarios na internet e o seu sistema.
+
+Pense assim:
+
+- Seu dominio (`duciferzinho.com`) e o endereco da sua loja.
+- O nginx e o porteiro que recebe quem chega na porta e encaminha para dentro.
+- O Docker e o interior da loja, onde tudo funciona.
+
+---
+
+### Por que existem dois nginx neste projeto?
+
+Este projeto tem dois nginx em camadas diferentes:
+
+#### Nginx interno (dentro do Docker)
+
+- Ja vem **pronto e configurado** no arquivo `nginx.conf` da raiz do projeto.
+- Voce **nao precisa tocar nele**.
+- Ele e responsavel por:
+  - Servir os arquivos do frontend React
+  - Encaminhar requisicoes de `/api/*` para o backend (comunicacao interna Docker)
+
+#### Nginx externo (instalado na VPS, fora do Docker)
+
+- Voce precisa instalar e configurar este.
+- Ele e responsavel por:
+  - Receber requisicoes da internet nas portas 80 (HTTP) e 443 (HTTPS)
+  - Encaminhar para o Docker na porta definida em `FRONTEND_PORT`
+  - Gerenciar o certificado SSL (cadeado verde no navegador)
+
+---
+
+### Como fica o fluxo completo
+
+```text
+Usuario no navegador
+        |
+        | HTTPS porta 443
+        v
+Nginx externo (instalado na VPS)       <- voce configura este
+        |
+        | proxy para 127.0.0.1:FRONTEND_PORT (ex: 5000)
+        v
+Docker compose (container do frontend) <- ja vem pronto no projeto
+        |
+        +-- /     React SPA (arquivos estaticos)
+        |
+        +-- /api/* Backend Fastify   <- comunicacao interna Docker
+                    |
+                    v
+                 PostgreSQL           <- comunicacao interna Docker
+```
+
+> O Docker interno nao precisa nem pode ser acessado diretamente pela internet. O nginx externo e quem "abre a porta".
+
+---
+
+### Passo 1: instalar o nginx na VPS
+
+```bash
+sudo apt update
+sudo apt install nginx certbot python3-certbot-nginx -y
+```
+
+Verifique se instalou:
+
+```bash
+nginx -v
+```
+
+---
+
+### Passo 2: criar o arquivo de configuracao do nginx externo
+
+Crie um arquivo de configuracao para o seu dominio:
+
+```bash
+sudo nano /etc/nginx/sites-available/daemonlogs
+```
+
+Cole o conteudo abaixo. Substitua:
+- `duciferzinho.com` pelo seu dominio
+- `5000` pelo valor de `FRONTEND_PORT` do seu `.env`
+
+```nginx
+server {
+    listen 80;
+    server_name duciferzinho.com;
+
+    # Necessario para o certbot gerar/renovar o certificado SSL
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    # Redireciona HTTP para HTTPS automaticamente
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name duciferzinho.com;
+
+    # Certificados gerados pelo certbot (passo 3)
+    ssl_certificate     /etc/letsencrypt/live/duciferzinho.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/duciferzinho.com/privkey.pem;
+
+    # Encaminha TUDO para o Docker na porta FRONTEND_PORT
+    location / {
+        proxy_pass         http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_read_timeout 300s;
+    }
+}
+```
+
+Ative a configuracao:
+
+```bash
+sudo ln -s /etc/nginx/sites-available/daemonlogs /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+---
+
+### Passo 3: gerar o certificado SSL (HTTPS gratuito)
+
+```bash
+sudo certbot --nginx -d duciferzinho.com
+```
+
+O certbot vai:
+1. Pedir seu email
+2. Pedir para aceitar os termos
+3. Gerar e instalar o certificado automaticamente
+4. Recarregar o nginx
+
+Apos isso, `https://duciferzinho.com` funcionara com o cadeado verde.
+
+Verifique se a renovacao automatica esta ativa:
+
+```bash
+sudo certbot renew --dry-run
+```
+
+---
+
+### Relacao entre FRONTEND_PORT e o nginx externo
+
+O `FRONTEND_PORT` no `.env` define em qual porta do host o Docker vai expor o frontend.
+
+Exemplo:
+
+```env
+FRONTEND_PORT=5000
+```
+
+Isso significa:
+- Docker expoe a porta `5000` do servidor
+- O nginx externo encaminha para `http://127.0.0.1:5000`
+- O usuario acessa normalmente por `https://seudominio.com` (porta 443)
+
+> Se voce mudar `FRONTEND_PORT`, atualize tambem o `proxy_pass` no arquivo de configuracao do nginx externo.
+
+---
+
+## Configurando o Woovi PIX (webhook)
+
+### O que e um webhook
+
+Webhook e uma notificacao automatica. Quando um usuario paga o PIX, o Woovi envia uma requisicao para o seu backend avisando. O backend entao ativa o premium do usuario automaticamente.
+
+Sem o webhook configurado, o pagamento e processado no Woovi, mas o sistema nunca fica sabendo.
+
+---
+
+### As tres variaveis do Woovi
+
+```env
+WOOVI_API_KEY=           # chave de autorizacao para criar cobrancas PIX
+WOOVI_WEBHOOK_SECRET=    # segredo para verificar se o webhook e legitimo
+WOOVI_CHARGE_VALUE_CENTS=2000  # valor da assinatura em centavos
+```
+
+---
+
+### Onde encontrar o WOOVI_API_KEY
+
+1. Acesse [https://app.woovi.com](https://app.woovi.com)
+2. No menu lateral, clique em **API/Plugins**
+3. Abra a sua aplicacao
+4. Copie o valor do campo **Authorization**
+   (e um texto longo em base64, começa com `Q2xp...`)
+
+Esse valor vai para `WOOVI_API_KEY`.
+
+---
+
+### Onde encontrar o WOOVI_WEBHOOK_SECRET
+
+1. Ainda em **API/Plugins** → sua aplicacao
+2. Copie o valor do campo **AppID**
+   (e um texto mais curto, diferente do Authorization)
+
+Esse valor vai para `WOOVI_WEBHOOK_SECRET`.
+
+> **Por que o AppID e o segredo?** O Woovi assina cada requisicao de webhook usando o AppID como chave. O backend usa esse mesmo AppID para verificar que a requisicao veio de verdade do Woovi e nao de outra fonte.
+
+---
+
+### Como configurar o webhook no painel Woovi
+
+1. No menu do Woovi, va em **API/Plugins** → **Webhooks**
+2. Clique em **Criar webhook** (ou edite o existente)
+3. Preencha exatamente assim:
+
+| Campo | Valor |
+|---|---|
+| Nome | daemonlogs |
+| Evento | `OPENPIX:CHARGE_COMPLETED` |
+| URL | `https://seudominio.com/api/webhooks/woovi` |
+
+> **Atencao critica:** a URL nao e apenas o dominio raiz. Ela deve terminar em `/api/webhooks/woovi`. Exemplo correto: `https://duciferzinho.com/api/webhooks/woovi`
+
+4. Nao precisa adicionar cabecalhos HTTP manuais — o Woovi gera a assinatura automaticamente
+5. Salve o webhook
+
+O Woovi vai tentar acessar a URL para verificar se ela responde com HTTP 200. O Docker compose precisa estar rodando antes de salvar o webhook.
+
+---
+
+### Ordem correta para configurar
+
+1. Preencha `WOOVI_API_KEY` e `WOOVI_WEBHOOK_SECRET` no `.env`
+2. Suba o Docker compose (`docker compose up --build -d`)
+3. Configure o nginx externo (para HTTPS funcionar)
+4. Abra o painel Woovi e salve o webhook com a URL correta
+
+Se o webhook nao conseguir ser salvo, significa que o endpoint ainda nao esta acessivel. Verifique se o Docker e o nginx externo estao funcionando.
+
+---
+
+### Como testar se o webhook esta funcionando
+
+Após configurar tudo:
+
+```bash
+# Acompanhe os logs do backend em tempo real
+docker compose logs -f api
+```
+
+Em outro terminal, faca um pagamento de teste pelo painel Woovi.
+
+Nos logs deve aparecer algo sobre webhook recebido. Se o premium for ativado no usuario, esta tudo certo.
 
 ---
 
