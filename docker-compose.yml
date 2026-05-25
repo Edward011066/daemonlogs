@@ -1,0 +1,87 @@
+# docker-compose.yml — Stack unificada: frontend + backend + postgres
+#
+# Rede interna:
+#   - browser → nginx (frontend:80) → /api/* proxied → api:3000   (interna)
+#   - api → postgres:5432                                           (interna)
+#   - postgres NÃO tem porta exposta externamente
+#   - api    NÃO tem porta exposta externamente (acesso só pelo nginx)
+#
+# Como usar:
+#   1. Configure ./DaemonLogs-backend/.env  (veja .env.example do backend)
+#   2. Configure ./DaemonLogs-frontend/.env (veja .env.example do frontend)
+#      IMPORTANTE: VITE_AUTH_MODE deve ser igual ao AUTH_MODE do backend
+#   3. docker compose up --build
+#   4. Acesse http://localhost (ou a porta configurada em FRONTEND_PORT)
+#
+# Variáveis opcionais no shell (ou num .env na raiz deste compose):
+#   FRONTEND_PORT  — porta exposta do nginx  (padrão: 80)
+
+services:
+
+  # ── PostgreSQL ────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: daemonlogs-postgres
+    restart: unless-stopped
+    # Lê POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB do backend/.env
+    env_file:
+      - ./DaemonLogs-backend/.env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # Sem porta externa — apenas a rede interna do compose
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-daemonlogs} -d ${POSTGRES_DB:-daemonlogs_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Backend (Fastify + Prisma) ────────────────────────────────────────────
+  api:
+    build:
+      context: ./DaemonLogs-backend
+    container_name: daemonlogs-api
+    restart: unless-stopped
+    env_file:
+      - ./DaemonLogs-backend/.env
+    environment:
+      # Sobrescreve DATABASE_URL para usar o hostname interno do compose
+      DATABASE_URL: postgresql://${POSTGRES_USER:-daemonlogs}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-daemonlogs_db}
+      NODE_ENV: production
+      SWAGGER_ENABLED: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Sem porta externa — o nginx acessa via rede interna (api:3000)
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    command: >
+      sh -c "npx prisma migrate deploy && node dist/server.js"
+
+  # ── Frontend (Vite build → nginx com proxy reverso) ───────────────────────
+  frontend:
+    build:
+      context: ./DaemonLogs-frontend
+      target: prod
+      args:
+        # VITE_API_URL é baked no build pelo Vite.
+        # /api é uma rota relativa — o nginx deste container faz o proxy
+        # de /api/* → api:3000/* (rede interna do compose).
+        VITE_API_URL: /api
+    container_name: daemonlogs-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    # Substitui o nginx.conf da imagem pelo da raiz do projeto,
+    # que adiciona o proxy reverso para o serviço api
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

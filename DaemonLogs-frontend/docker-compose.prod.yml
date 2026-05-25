@@ -1,0 +1,18 @@
+# docker-compose.prod.yml — build e deploy de produção
+#
+# Uso:
+#   VITE_API_URL=https://api.seudominio.com docker compose -f docker-compose.prod.yml up -d
+#
+# A URL da API é injetada em tempo de build (baked-in pelo Vite).
+# Para trocar a URL é necessário reconstruir a imagem (--build).
+
+services:
+  frontend:
+    build:
+      context: .
+      target: prod
+      args:
+        VITE_API_URL: ${VITE_API_URL:?Defina VITE_API_URL antes de rodar em produção}
+    ports:
+      - "80:80"
+    restart: unless-stopped

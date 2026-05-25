@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ── Dracula palette (HSL) ─────────────────────────── */
+
+    /* Backgrounds */
+    --background:  231 15% 18%;   /* #282a36 */
+    --foreground:  60  30% 96%;   /* #f8f8f2 */
+
+    /* Card / Popover */
+    --card:             232 16% 14%;  /* #21222c */
+    --card-foreground:  60  30% 96%;
+    --popover:          232 16% 14%;
+    --popover-foreground: 60 30% 96%;
+
+    /* Primary = acento roxo */
+    --primary:           265 88% 78%;  /* #bd93f9 */
+    --primary-foreground: 232 16% 14%;
+
+    /* Secondary (itens nav, surface alternativa) */
+    --secondary:           228 12% 25%;
+    --secondary-foreground: 60  30% 96%;
+
+    /* Muted */
+    --muted:            228 12% 22%;
+    --muted-foreground: 225 27% 51%;  /* #6272a4 */
+
+    /* Accent */
+    --accent:           265 88% 78%;
+    --accent-foreground: 232 16% 14%;
+
+    /* Destrutivo */
+    --destructive:           0 100% 67%;  /* #ff5555 */
+    --destructive-foreground: 60 30% 96%;
+
+    /* Bordas */
+    --border: 228 12% 30%;  /* #44475a */
+    --input:  228 12% 25%;
+    --ring:   265 88% 78%;
+
+    /* Radius */
+    --radius: 0.5rem;
+
+    /* ── Tokens customizados ───────────────────────────── */
+    --surface:   232 16% 14%;   /* #21222c */
+    --surface-2: 232 14% 16%;   /* #26273a */
+    --success:   135  96% 63%;  /* #50fa7b */
+    --warning:    62  95% 77%;  /* #f1fa8c */
+    --info:      193  93% 77%;  /* #8be9fd */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: "Inter", system-ui, sans-serif;
+  }
+
+  /* Scrollbar sutil */
+  ::-webkit-scrollbar        { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track  { @apply bg-surface; }
+  ::-webkit-scrollbar-thumb  { @apply bg-border rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-muted-foreground; }
+
+  /* Fonte mono apenas para valores técnicos */
+  .font-code {
+    font-family: "Fira Code", "JetBrains Mono", monospace;
+    font-size: 0.875em;
+  }
+}

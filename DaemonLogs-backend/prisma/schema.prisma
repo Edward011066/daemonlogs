@@ -1,0 +1,185 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model usuarios {
+  id                     Int                    @id @default(autoincrement())
+  username               String                 @unique @db.VarChar(50)
+  discord_id             String?                @unique @db.VarChar(20)
+  password               String?
+  email                  String?                @unique @db.VarChar(255)
+  is_activated           Boolean                @default(false)
+  is_premium             Boolean                @default(false)
+  is_admin               Boolean                @default(false)
+  premium_expires_at     DateTime?
+  last_target_removed_at DateTime?
+  referral_code          String                 @unique @db.VarChar(20)
+  referral_count         Int                    @default(0)
+  referred_by_id         Int?
+  referred_by            usuarios?              @relation("referrals", fields: [referred_by_id], references: [id])
+  referrals_made         usuarios[]             @relation("referrals")
+  sessions               sessions[]
+  contas_monitoramento   contas_monitoramento[]
+  contas_alvos           contas_alvos[]
+  pagamentos             pagamentos[]
+  email_verifications    email_verifications[]
+  password_resets        password_resets[]
+  my_token               my_tokens?
+  clear_chat_usage       clear_chat_usage?
+  created_at             DateTime               @default(now())
+  updated_at             DateTime               @updatedAt
+
+  @@map("usuarios")
+}
+
+model contas_monitoramento {
+  id         Int        @id @default(autoincrement())
+  token      String     @db.Text
+  is_valid   Boolean    @default(false)
+  usuario_id Int
+  usuario    usuarios   @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  servidores servidores[]
+  created_at DateTime   @default(now())
+  updated_at DateTime   @updatedAt
+
+  @@map("contas_monitoramento")
+}
+
+model servidores {
+  id                     Int                  @id @default(autoincrement())
+  guild_id               String               @db.VarChar(20)
+  server_name            String               @db.VarChar(200)
+  conta_monitoramento_id Int
+  conta_monitoramento    contas_monitoramento @relation(fields: [conta_monitoramento_id], references: [id], onDelete: Cascade)
+  created_at             DateTime             @default(now())
+  updated_at             DateTime             @updatedAt
+
+  @@unique([guild_id, conta_monitoramento_id])
+  @@map("servidores")
+}
+
+model contas_alvos {
+  id              Int                     @id @default(autoincrement())
+  discord_user_id String                  @db.VarChar(20)
+  username        String                  @db.VarChar(200)
+  username_global String?                 @db.VarChar(200)
+  usuario_id      Int
+  usuario         usuarios                @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  mensagens       mensagens_salvas[]
+  eventos         eventos_monitoramento[]
+  created_at      DateTime                @default(now())
+  updated_at      DateTime                @updatedAt
+
+  @@unique([discord_user_id, usuario_id])
+  @@map("contas_alvos")
+}
+
+model mensagens_salvas {
+  id             Int          @id @default(autoincrement())
+  message_id     String       @unique @db.VarChar(20)
+  conteudo       String       @db.Text
+  link_mensagem  String?      @db.Text
+  guild_id       String?      @db.VarChar(20)
+  guild_name     String?      @db.VarChar(200)
+  channel_id     String?      @db.VarChar(20)
+  channel_name   String?      @db.VarChar(200)
+  conta_alvo_id  Int
+  conta_alvo     contas_alvos @relation(fields: [conta_alvo_id], references: [id], onDelete: Cascade)
+  created_at     DateTime     @default(now())
+
+  @@map("mensagens_salvas")
+}
+
+model eventos_monitoramento {
+  id              Int          @id @default(autoincrement())
+  tipo            String       @db.VarChar(50)
+  dados           Json
+  idempotency_key String       @unique @db.VarChar(100)
+  conta_alvo_id   Int
+  conta_alvo      contas_alvos @relation(fields: [conta_alvo_id], references: [id], onDelete: Cascade)
+  created_at      DateTime     @default(now())
+
+  @@index([conta_alvo_id, tipo])
+  @@map("eventos_monitoramento")
+}
+
+model sessions {
+  id         Int      @id @default(autoincrement())
+  usuario_id Int
+  usuario    usuarios @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  ip         String   @db.VarChar(45)
+  jwt_token  String   @unique @db.Text
+  expires_at DateTime
+  created_at DateTime @default(now())
+
+  @@index([usuario_id])
+  @@map("sessions")
+}
+
+model pagamentos {
+  id                 Int      @id @default(autoincrement())
+  correlation_id     String   @unique @db.VarChar(100)
+  usuario_id         Int
+  usuario            usuarios @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  valor_centavos     Int
+  status             String   @db.VarChar(20)
+  premium_expires_at DateTime?
+  woovi_charge_id    String?  @db.VarChar(200)
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  @@map("pagamentos")
+}
+
+model email_verifications {
+  id         Int      @id @default(autoincrement())
+  usuario_id Int
+  usuario    usuarios @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  code       String   @unique @db.VarChar(64)
+  expires_at DateTime
+  used       Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  @@map("email_verifications")
+}
+
+model password_resets {
+  id         Int      @id @default(autoincrement())
+  usuario_id Int
+  usuario    usuarios @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  code       String   @unique @db.VarChar(6)
+  expires_at DateTime
+  used       Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  @@map("password_resets")
+}
+
+model my_tokens {
+  id         Int      @id @default(autoincrement())
+  token      String   @db.Text
+  is_valid   Boolean  @default(false)
+  usuario_id Int      @unique
+  usuario    usuarios @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("my_tokens")
+}
+
+model clear_chat_usage {
+  id               Int      @id @default(autoincrement())
+  usuario_id       Int      @unique
+  usuario          usuarios @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  messages_deleted Int      @default(0)
+  period_start_at  DateTime @default(now())
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  @@map("clear_chat_usage")
+}

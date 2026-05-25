@@ -1,0 +1,24 @@
+# docker-compose.yml — ambiente de desenvolvimento com hot-reload
+#
+# Uso:
+#   docker compose up
+#   docker compose up --build   (após alterar package.json ou Dockerfile)
+#
+# O código-fonte é montado via volume, então edições locais refletem
+# imediatamente no servidor Vite rodando dentro do container.
+
+services:
+  frontend:
+    build:
+      context: .
+      target: dev
+    volumes:
+      - .:/app
+      - /app/node_modules   # preserva node_modules do container
+    ports:
+      - "5173:5173"
+    env_file:
+      - .env
+    environment:
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:3000}
+    restart: unless-stopped
