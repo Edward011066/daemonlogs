@@ -6,12 +6,13 @@ import type { EventsFilters } from "@/hooks/useEvents"
 import type { EventType } from "@/types"
 
 const EVENT_TYPES: { value: EventType; label: string }[] = [
-  { value: "voice_join",     label: "Entrou em voz" },
-  { value: "voice_leave",    label: "Saiu de voz" },
-  { value: "voice_move",     label: "Movido em voz" },
-  { value: "message_edit",   label: "Mensagem editada" },
-  { value: "message_delete", label: "Mensagem deletada" },
-  { value: "mention",        label: "Menção" },
+  { value: "VOICE_JOIN",     label: "Entrou em voz" },
+  { value: "VOICE_LEAVE",    label: "Saiu de voz" },
+  { value: "VOICE_SWITCH",   label: "Trocou de canal" },
+  { value: "MESSAGE_SENT",   label: "Mensagem enviada" },
+  { value: "MESSAGE_EDIT",   label: "Mensagem editada" },
+  { value: "MESSAGE_DELETE", label: "Mensagem deletada" },
+  { value: "MENTION",        label: "Menção" },
 ]
 
 interface EventFiltersProps {

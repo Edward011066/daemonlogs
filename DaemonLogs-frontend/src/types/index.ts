@@ -61,12 +61,13 @@ export interface Target {
 // ── Events ────────────────────────────────────────────────────────────────────
 
 export type EventType =
-  | "voice_join"
-  | "voice_leave"
-  | "voice_move"
-  | "message_edit"
-  | "message_delete"
-  | "mention"
+  | "VOICE_JOIN"
+  | "VOICE_LEAVE"
+  | "VOICE_SWITCH"
+  | "MESSAGE_SENT"
+  | "MESSAGE_EDIT"
+  | "MESSAGE_DELETE"
+  | "MENTION"
 
 export interface DiscordEvent {
   id: number
