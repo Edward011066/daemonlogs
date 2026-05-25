@@ -32,9 +32,9 @@ export function PaymentHistory() {
           const cfg = STATUS_CONFIG[p.status]
           const Icon = cfg.icon
           return (
-            <TableRow key={p.correlationID}>
+            <TableRow key={p.correlation_id}>
               <TableCell className="font-code text-xs text-muted-foreground">
-                {p.correlationID.slice(0, 8)}…
+                {p.correlation_id.slice(0, 8)}…
               </TableCell>
               <TableCell>
                 <Badge variant="outline" className={cn(cfg.classes, "gap-1")}>
@@ -43,7 +43,7 @@ export function PaymentHistory() {
                 </Badge>
               </TableCell>
               <TableCell className="text-xs text-muted-foreground">
-                {p.paidAt ? new Date(p.paidAt).toLocaleString("pt-BR") : "—"}
+                {p.premium_expires_at ? new Date(p.premium_expires_at).toLocaleString("pt-BR") : "—"}
               </TableCell>
             </TableRow>
           )

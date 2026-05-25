@@ -23,7 +23,7 @@ export function PaymentsPage() {
     try {
       const result = await initiate.mutateAsync()
       if (result) {
-        setCorrelationId(result.correlationID)
+        setCorrelationId(result.correlationId)
       }
     } catch (err) {
       if (err instanceof ApiError) toast.error(err.message)

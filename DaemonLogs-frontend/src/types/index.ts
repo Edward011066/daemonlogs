@@ -102,17 +102,19 @@ export interface Message {
 export type PaymentStatus = "ACTIVE" | "COMPLETED" | "EXPIRED"
 
 export interface PaymentInitiated {
-  correlationID: string
-  pixCopyPaste: string
+  correlationId: string
   qrCodeImage: string
-  expiresAt: string
-  valueCents: number
+  brCode: string
+  valorCentavos: number
 }
 
 export interface PaymentStatusResponse {
+  id: number
+  correlation_id: string
+  valor_centavos: number
   status: PaymentStatus
-  correlationID: string
-  paidAt: string | null
+  premium_expires_at: string | null
+  created_at: string
 }
 
 // ── My Token ──────────────────────────────────────────────────────────────────

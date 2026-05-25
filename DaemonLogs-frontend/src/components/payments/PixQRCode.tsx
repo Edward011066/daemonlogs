@@ -8,15 +8,11 @@ interface PixQRCodeProps {
 }
 
 export function PixQRCode({ payment }: PixQRCodeProps) {
-  const valueBRL = (payment.valueCents / 100).toLocaleString("pt-BR", {
+  const valueBRL = (payment.valorCentavos / 100).toLocaleString("pt-BR", {
     style: "currency",
     currency: "BRL",
   })
 
-  const expiresAt = new Date(payment.expiresAt).toLocaleTimeString("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-  })
 
   return (
     <Card className="bg-surface">
@@ -40,14 +36,14 @@ export function PixQRCode({ payment }: PixQRCodeProps) {
         <div className="rounded-md bg-surface-2 p-3">
           <div className="flex items-start justify-between gap-2">
             <p className="font-code break-all text-[11px] text-muted-foreground leading-relaxed">
-              {payment.pixCopyPaste}
+              {payment.brCode}
             </p>
-            <CopyButton value={payment.pixCopyPaste} className="shrink-0" />
+            <CopyButton value={payment.brCode} className="shrink-0" />
           </div>
         </div>
 
         <p className="text-center text-xs text-muted-foreground">
-          QR Code válido até {expiresAt}. Aguardando pagamento...
+          Aguardando confirmação do pagamento...
         </p>
       </CardContent>
     </Card>
