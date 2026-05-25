@@ -29,7 +29,8 @@ Se voce seguir este guia na ordem, o caminho fica previsivel.
 9. [Subindo apenas o backend em `DaemonLogs-backend`](#subindo-apenas-o-backend-em-daemonlogs-backend)
 10. [Subindo apenas o frontend em `DaemonLogs-frontend`](#subindo-apenas-o-frontend-em-daemonlogs-frontend)
 11. [Erros comuns e como resolver](#erros-comuns-e-como-resolver)
-12. [Resumo rapido](#resumo-rapido)
+12. [FAQ eficaz](#faq-eficaz)
+13. [Resumo rapido](#resumo-rapido)
 
 ---
 
@@ -622,6 +623,12 @@ https://seudominio.com
 ```
 
 Se o frontend abrir e a API responder, o deploy base ficou pronto.
+
+Observacao importante sobre o status `healthy`:
+
+- na versao atual do projeto, o `/health` da API tambem testa conectividade real com o banco
+- entao `daemonlogs-api Up (healthy)` agora significa que a API conseguiu falar com o Postgres naquele momento
+- se a API estiver subindo mas o banco estiver com senha errada, o esperado agora e o container nao ficar saudavel
 
 ---
 
@@ -1386,7 +1393,20 @@ docker compose down -v
 docker compose up --build -d
 ```
 
-### 9. Mudei `.env` do frontend e nada aconteceu
+Se voce mudou `POSTGRES_PASSWORD` depois que o banco ja existia, esse costuma ser exatamente o motivo do erro.
+
+### 9. API aparece `healthy`, mas o login Discord falha com erro de banco
+
+Em versoes antigas do projeto, o `health` nao confirmava o banco de dados.
+
+Na versao atual isso foi corrigido.
+
+Entao, daqui para frente:
+
+- se a API estiver `healthy`, ela tambem conseguiu acessar o banco
+- se o callback do Discord falhar com erro de banco, verifique se a VPS ainda esta rodando uma imagem antiga sem essa correcao
+
+### 10. Mudei `.env` do frontend e nada aconteceu
 
 O frontend usa Vite.
 Variaveis `VITE_*` entram no build.
@@ -1396,6 +1416,174 @@ Entao sempre refaca a imagem:
 ```bash
 docker compose -f docker-compose.prod.yml up --build -d
 ```
+
+---
+
+## FAQ eficaz
+
+### 1. Mudei `POSTGRES_PASSWORD` no `.env`. Preciso apagar o volume antigo?
+
+Na maioria dos casos, sim.
+
+Na imagem oficial do Postgres, `POSTGRES_PASSWORD` e usada na criacao inicial do banco. Se o volume ja existia, mudar o `.env` depois nao reconfigura automaticamente o usuario ja criado.
+
+Se voce pode perder os dados atuais:
+
+```bash
+docker compose down -v
+docker compose up --build -d
+```
+
+Se voce nao pode perder os dados, altere a senha dentro do Postgres em vez de apagar o volume.
+
+### 2. O erro apareceu no callback do Discord. O problema e do Discord?
+
+Nem sempre.
+
+Se o Discord redirecionou voce de volta para `/api/auth/discord/callback` com `code` e `state`, o OAuth2 chegou ate a sua API.
+
+Se a resposta final mostra `P1000`, `P1001` ou outro erro do Prisma, o problema ja saiu do Discord e entrou na etapa de banco de dados.
+
+### 3. Qual e o comando mais seguro para resetar tudo quando estou montando a VPS do zero?
+
+Se voce ainda nao precisa preservar dados:
+
+```bash
+docker compose down -v
+docker compose up --build -d
+docker compose ps
+docker compose logs -f api
+```
+
+Esse fluxo resolve boa parte dos erros de volume antigo, senha antiga e imagem antiga.
+
+### 4. Como eu sei se o problema esta no nginx ou na aplicacao?
+
+Use esta ordem:
+
+```bash
+docker compose ps
+docker compose logs -f api
+curl http://127.0.0.1:5000
+curl http://127.0.0.1:5000/api/health
+sudo nginx -t
+```
+
+Leitura rapida:
+
+- se `127.0.0.1:5000` nao responde, o problema esta antes do nginx externo
+- se `127.0.0.1:5000` responde mas o dominio da `502`, olhe o nginx externo
+- se `/api/health` falha, olhe API e banco
+
+### 5. Posso usar manualmente a URL gerada no `OAuth2 URL Generator` do Discord?
+
+Use apenas para entender ou testar, nao como fluxo principal do projeto.
+
+Neste sistema, o backend gera a URL de autorizacao sozinho na rota:
+
+- deploy unificado: `https://seudominio.com/api/auth/discord`
+- deploy separado: `https://api.seudominio.com/auth/discord`
+
+Isso e melhor porque o backend tambem gera e valida o `state` de seguranca.
+
+### 6. O que eu copio do portal do Discord e o que eu escrevo manualmente?
+
+Do portal do Discord para o `.env`:
+
+- `Application ID` -> `DISCORD_CLIENT_ID`
+- `Client Secret` -> `DISCORD_CLIENT_SECRET`
+
+Voce define manualmente, com base no seu dominio:
+
+- `DISCORD_REDIRECT_URI`
+- `DISCORD_OAUTH_FRONTEND_REDIRECT`
+
+Depois copie o valor de `DISCORD_REDIRECT_URI` do `.env` para a lista de Redirects no portal.
+
+### 7. Qual URL da Woovi eu devo cadastrar no webhook?
+
+Deploy unificado:
+
+```text
+https://seudominio.com/api/webhooks/woovi
+```
+
+Backend separado:
+
+```text
+https://api.seudominio.com/webhooks/woovi
+```
+
+Nao use so o dominio raiz.
+
+### 8. Preciso preencher `WOOVI_WEBHOOK_SECRET`?
+
+Hoje, no fluxo normal, nao.
+
+O projeto foi ajustado para validar o header atual `x-webhook-signature` da Woovi.
+
+`WOOVI_WEBHOOK_SECRET` ficou como compatibilidade opcional com o metodo legado `X-OpenPix-Signature`.
+
+Se voce nao usa esse metodo antigo, pode deixar vazio.
+
+### 9. Quando eu preciso dar `--build` de novo?
+
+Sempre que mudar:
+
+- qualquer variavel `VITE_*` do frontend
+- Dockerfile
+- dependencias
+- arquivos copiados para dentro da imagem
+
+Comandos uteis:
+
+```bash
+docker compose up --build -d
+docker compose -f docker-compose.prod.yml up --build -d
+```
+
+### 10. Exposei `DISCORD_CLIENT_SECRET`, token de sessao ou outra credencial. O que fazer?
+
+Considere o segredo comprometido.
+
+Acoes imediatas:
+
+1. rotacione o `Client Secret` no portal do Discord
+2. atualize o `.env`
+3. reinicie a stack
+4. encerre sessoes que possam ter sido expostas
+
+Nao poste novamente cookies, `authorization`, `Client Secret` ou tokens em logs, screenshots ou chats.
+
+### 11. Quero testar rapidamente se meu callback do Discord esta configurado certo. Como fazer?
+
+Abra a rota publica do backend no navegador:
+
+- deploy unificado: `https://seudominio.com/api/auth/discord`
+- deploy separado: `https://api.seudominio.com/auth/discord`
+
+Se o navegador for para a tela do Discord, o inicio do fluxo esta certo.
+
+Se, depois de autorizar, voce voltar para o callback e cair em erro de banco, o problema nao esta no Discord e sim na API ou no Postgres.
+
+### 12. O que eu verifico primeiro quando algo nao sobe?
+
+Use sempre esta sequencia:
+
+```bash
+docker compose ps
+docker compose logs api
+docker compose logs frontend
+docker compose logs postgres
+sudo nginx -t
+```
+
+Isso costuma separar rapido se a falha esta em:
+
+- container
+- banco
+- nginx
+- variavel de ambiente
 
 ---
 
