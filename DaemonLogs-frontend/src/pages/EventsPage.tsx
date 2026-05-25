@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { ErrorAlert } from "@/components/shared/ErrorAlert"
 import { EventFilters } from "@/components/events/EventFilters"
-import { EventsTable } from "@/components/events/EventsTable"
+import { EventTimeline } from "@/components/events/EventTimeline"
 import { useEvents } from "@/hooks/useEvents"
 import type { EventsFilters } from "@/hooks/useEvents"
 import { ChevronLeft, ChevronRight } from "lucide-react"
@@ -29,17 +29,29 @@ export function EventsPage() {
         </p>
       </div>
 
-      <EventFilters filters={filters} onChange={(f) => setFilters({ ...f, page: 1, limit: LIMIT })} />
+      <div className="rounded-lg border border-border bg-surface p-4">
+        <EventFilters
+          filters={filters}
+          onChange={(f) => setFilters({ ...f, page: 1, limit: LIMIT })}
+        />
+      </div>
 
       {error && <ErrorAlert error={error} />}
 
       {isLoading ? (
-        <Skeleton className="h-64 w-full" />
+        <div className="space-y-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex gap-4">
+              <Skeleton className="h-10 w-10 rounded-full shrink-0" />
+              <Skeleton className="h-24 flex-1 rounded-lg" />
+            </div>
+          ))}
+        </div>
       ) : data?.items.length ? (
         <>
-          <EventsTable events={data.items} />
+          <EventTimeline events={data.items} />
 
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div className="flex items-center justify-between border-t border-border pt-4 text-sm text-muted-foreground">
             <span>
               {total} evento{total !== 1 ? "s" : ""} no total
             </span>
@@ -67,7 +79,11 @@ export function EventsPage() {
           </div>
         </>
       ) : (
-        <EmptyState icon={Activity} title="Nenhum evento encontrado" description="Ajuste os filtros ou aguarde novos eventos." />
+        <EmptyState
+          icon={Activity}
+          title="Nenhum evento encontrado"
+          description="Ajuste os filtros ou aguarde novos eventos."
+        />
       )}
     </div>
   )

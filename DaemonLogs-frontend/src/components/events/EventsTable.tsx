@@ -32,12 +32,12 @@ export function EventsTable({ events, loading }: EventsTableProps) {
         {events.map((event) => (
           <TableRow key={event.id}>
             <TableCell>
-              <EventBadge type={event.event_type} />
+              <EventBadge type={event.tipo} />
             </TableCell>
-            <TableCell className="font-code text-sm text-muted-foreground">
-              {event.target_username}
+            <TableCell className="font-mono text-sm text-muted-foreground">
+              {event.conta_alvo.username}
             </TableCell>
-            <TableCell className="font-code text-xs text-muted-foreground">
+            <TableCell className="font-mono text-xs text-muted-foreground">
               {new Date(event.created_at).toLocaleString("pt-BR")}
             </TableCell>
           </TableRow>

@@ -1,5 +1,15 @@
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import {
+  Mic,
+  MicOff,
+  ArrowRightLeft,
+  MessageSquare,
+  Pencil,
+  Trash2,
+  AtSign,
+  type LucideIcon,
+} from "lucide-react"
 import type { EventType } from "@/types"
 
 const EVENT_CLASSES: Record<EventType, string> = {
@@ -22,14 +32,37 @@ const EVENT_LABEL: Record<EventType, string> = {
   MENTION:        "Menção",
 }
 
+export const EVENT_ICON: Record<EventType, LucideIcon> = {
+  VOICE_JOIN:     Mic,
+  VOICE_LEAVE:    MicOff,
+  VOICE_SWITCH:   ArrowRightLeft,
+  MESSAGE_SENT:   MessageSquare,
+  MESSAGE_EDIT:   Pencil,
+  MESSAGE_DELETE: Trash2,
+  MENTION:        AtSign,
+}
+
+export const EVENT_DOT_CLASSES: Record<EventType, string> = {
+  VOICE_JOIN:     "bg-info/20 text-info",
+  VOICE_LEAVE:    "bg-info/20 text-info",
+  VOICE_SWITCH:   "bg-info/20 text-info",
+  MESSAGE_SENT:   "bg-success/20 text-success",
+  MESSAGE_EDIT:   "bg-warning/20 text-warning",
+  MESSAGE_DELETE: "bg-destructive/20 text-destructive",
+  MENTION:        "bg-accent/20 text-accent",
+}
+
 interface EventBadgeProps {
   type: EventType
   className?: string
+  showIcon?: boolean
 }
 
-export function EventBadge({ type, className }: EventBadgeProps) {
+export function EventBadge({ type, className, showIcon = false }: EventBadgeProps) {
+  const Icon = EVENT_ICON[type]
   return (
-    <Badge variant="outline" className={cn(EVENT_CLASSES[type], className)}>
+    <Badge variant="outline" className={cn("gap-1 font-medium", EVENT_CLASSES[type], className)}>
+      {showIcon && <Icon className="h-3 w-3" />}
       {EVENT_LABEL[type]}
     </Badge>
   )

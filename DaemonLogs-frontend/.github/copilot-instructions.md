@@ -49,6 +49,7 @@ src/
 6. **Nunca invente endpoints** — consulte `FRONTEND DOCUMENTAÇÃO.md` ou `api-endpoints.json`.
 7. **Sem emoji de caractere Unicode** — use exclusivamente ícones `lucide-react`.
 8. **Cores via tokens** — nunca escreva `#bd93f9` ou `rgba(...)` em JSX; use as classes Tailwind configuradas.
+9. **Consulte `api-endpoints.json` SEMPRE** — antes de criar qualquer hook, query, mutation ou chamada `apiFetch()`, abra `api-endpoints.json` e verifique o path exato, os campos de request/response e os status codes. Os campos retornados pela API **podem diferir** dos nomes intuitivos (ex: `tipo` em vez de `event_type`, `dados` em vez de `metadata`, `conta_alvo` em vez de `target`). Nunca assuma nomes de campos — sempre confirme no spec.
 
 ## Gotchas críticos da API
 

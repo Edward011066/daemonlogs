@@ -69,13 +69,74 @@ export type EventType =
   | "MESSAGE_DELETE"
   | "MENTION"
 
+/** Referência a um usuário Discord embutida nos dados de evento */
+export interface DiscordUserRef {
+  username: string
+  discord_user_id: string
+}
+
+/** Dados brutos de VOICE_JOIN */
+export interface VoiceJoinDados {
+  guild_id: string
+  guild_name: string
+  timestamp: string
+  canal_novo_id: string
+  canal_novo_nome: string
+  usuarios_presentes: DiscordUserRef[]
+}
+
+/** Dados brutos de VOICE_LEAVE */
+export interface VoiceLeaveDados {
+  guild_id: string
+  guild_name: string
+  timestamp: string
+  canal_anterior_id: string
+  canal_anterior_nome: string
+  usuarios_que_ficaram: DiscordUserRef[]
+}
+
+/** Dados brutos de VOICE_SWITCH */
+export interface VoiceSwitchDados {
+  guild_id: string
+  guild_name: string
+  timestamp: string
+  canal_anterior_id: string
+  canal_anterior_nome: string
+  canal_novo_id: string
+  canal_novo_nome: string
+}
+
+/** Dados brutos de MESSAGE_SENT / MESSAGE_EDIT / MESSAGE_DELETE / MENTION */
+export interface MessageDados {
+  guild_id?: string
+  guild_name?: string
+  channel_id?: string
+  channel_name?: string
+  timestamp: string
+  content?: string
+  content_before?: string
+  content_after?: string
+}
+
+export type EventDados =
+  | VoiceJoinDados
+  | VoiceLeaveDados
+  | VoiceSwitchDados
+  | MessageDados
+
+/**
+ * Evento Discord retornado pela API (campo "tipo", "dados", "conta_alvo").
+ * IMPORTANTE: os campos refletem a resposta real do servidor — não alterar.
+ */
 export interface DiscordEvent {
   id: number
-  event_type: EventType
-  target_discord_user_id: string
-  target_username: string
-  metadata: Record<string, unknown>
+  tipo: EventType
+  dados: EventDados & Record<string, unknown>
   created_at: string
+  conta_alvo: {
+    discord_user_id: string
+    username: string
+  }
 }
 
 export interface EventsResponse {
