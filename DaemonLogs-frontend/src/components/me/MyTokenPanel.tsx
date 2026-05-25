@@ -9,6 +9,7 @@ import { AsyncButton } from "@/components/shared/AsyncButton"
 import { useMyToken, useAddMyToken, useDeleteMyToken, useRotateMyToken } from "@/hooks/useMyToken"
 import { toast } from "sonner"
 import { ApiError } from "@/lib/api"
+import { showErrorToast } from "@/lib/error-display"
 
 export function MyTokenPanel() {
   const { data: myToken, isLoading } = useMyToken()
@@ -26,7 +27,7 @@ export function MyTokenPanel() {
       setNewToken("")
       setMode("idle")
     } catch (err) {
-      if (err instanceof ApiError) toast.error(err.message)
+      if (err instanceof ApiError) showErrorToast(err)
     }
   }
 
@@ -38,7 +39,7 @@ export function MyTokenPanel() {
       setNewToken("")
       setMode("idle")
     } catch (err) {
-      if (err instanceof ApiError) toast.error(err.message)
+      if (err instanceof ApiError) showErrorToast(err)
     }
   }
 
@@ -47,7 +48,7 @@ export function MyTokenPanel() {
       await deleteToken.mutateAsync()
       toast.success("Token removido.")
     } catch (err) {
-      if (err instanceof ApiError) toast.error(err.message)
+      if (err instanceof ApiError) showErrorToast(err)
     }
   }
 

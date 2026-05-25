@@ -3467,7 +3467,12 @@ async function buildApp() {
   });
   fastify.addContentTypeParser("application/json", { parseAs: "string" }, function(_req, body, done) {
     try {
-      const safe = body.replace(/([:,\[])\s*(\d{16,})(?=[\s,\]\}])/g, '$1 "$2"');
+      const rawBody2 = body;
+      if (rawBody2.trim().length === 0) {
+        done(null, void 0);
+        return;
+      }
+      const safe = rawBody2.replace(/([:,\[])\s*(\d{16,})(?=[\s,\]\}])/g, '$1 "$2"');
       done(null, JSON.parse(safe));
     } catch (err) {
       done(err, void 0);

@@ -8,6 +8,7 @@ import { useCloseDm, useLeaveServer, useDeleteRelationships } from "@/hooks/useT
 import { useClearChatDms, useClearChatChannel } from "@/hooks/useClearChat"
 import { toast } from "sonner"
 import { ApiError } from "@/lib/api"
+import { showErrorToast } from "@/lib/error-display"
 import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -25,7 +26,7 @@ export function ToolsPage() {
       await fn()
       toast.success(successMsg)
     } catch (err) {
-      if (err instanceof ApiError) toast.error(err.message)
+      if (err instanceof ApiError) showErrorToast(err)
     }
   }
 

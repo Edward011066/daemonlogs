@@ -33,7 +33,14 @@ export async function buildApp() {
   // Este parser converte qualquer inteiro ≥ 16 dígitos para string ANTES do JSON.parse.
   fastify.addContentTypeParser('application/json', { parseAs: 'string' }, function (_req, body, done) {
     try {
-      const safe = (body as string).replace(/([:,\[])\s*(\d{16,})(?=[\s,\]\}])/g, '$1 "$2"')
+      const rawBody = body as string
+
+      if (rawBody.trim().length === 0) {
+        done(null, undefined)
+        return
+      }
+
+      const safe = rawBody.replace(/([:,\[])\s*(\d{16,})(?=[\s,\]\}])/g, '$1 "$2"')
       done(null, JSON.parse(safe))
     } catch (err) {
       done(err as Error, undefined)

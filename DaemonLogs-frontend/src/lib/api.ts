@@ -1,16 +1,31 @@
 import { clearToken, getToken } from "./auth"
+import { resolveApiErrorCopy, type ApiErrorRouteHint } from "./api-error-copy"
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000"
 
 export class ApiError extends Error {
+  public readonly error: string
+  public readonly meta?: Record<string, unknown>
+  public readonly status?: number
+  public readonly rawMessage: string
+  public readonly routeHint?: ApiErrorRouteHint
+
   constructor(
-    public readonly error: string,
+    error: string,
     message: string,
-    public readonly meta?: Record<string, unknown>,
-    public readonly status?: number,
+    meta?: Record<string, unknown>,
+    status?: number,
   ) {
-    super(message)
+    const presentation = resolveApiErrorCopy(error, message)
+
+    super(presentation.message)
+
     this.name = "ApiError"
+    this.error = error
+    this.meta = meta
+    this.status = status
+    this.rawMessage = message
+    this.routeHint = presentation.routeHint
   }
 }
 
