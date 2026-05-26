@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { apiFetch } from "@/lib/api"
-import type { DiscordUserInfo, ToolsStatus } from "@/types"
+import type { DiscordUserInfo, OpenDmChannel, ToolsStatus } from "@/types"
 
 export function useToolsStatus() {
   return useQuery({
@@ -70,5 +70,12 @@ export function useValidateDiscordToken() {
         method: "POST",
         body: JSON.stringify({ token }),
       }),
+  })
+}
+
+export function useListDmChannels() {
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<{ channels: OpenDmChannel[] }>("/utils/dm-channels"),
   })
 }

@@ -1,5 +1,6 @@
 import { useState } from "react"
 import {
+  Inbox,
   KeyRound,
   LogOut,
   MessageCircleOff,
@@ -9,16 +10,26 @@ import {
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { AsyncButton } from "@/components/shared/AsyncButton"
+import { CopyButton } from "@/components/shared/CopyButton"
 import { ToolConfirmDialog } from "@/components/tools/ToolConfirmDialog"
 import { DiscordTokenResult } from "@/components/tools/DiscordTokenResult"
 import {
   useCloseDm,
   useDeleteRelationships,
   useLeaveServer,
+  useListDmChannels,
   useValidateDiscordToken,
 } from "@/hooks/useTools"
 import { useClearChatDms, useClearChatChannel, useClearChatServer } from "@/hooks/useClearChat"
@@ -36,6 +47,7 @@ export function ToolsPage() {
   const closeDm = useCloseDm()
   const leaveServer = useLeaveServer()
   const deleteRel = useDeleteRelationships()
+  const listDms = useListDmChannels()
   const validateDiscordToken = useValidateDiscordToken()
   const clearDms = useClearChatDms()
   const clearChannel = useClearChatChannel()
@@ -53,6 +65,10 @@ export function ToolsPage() {
   const [deleteRelOpen, setDeleteRelOpen] = useState(false)
   const [deleteRelIgnored, setDeleteRelIgnored] = useState("")
 
+  // ── Listar DMs abertas ──
+  const [listDmsIncludeChannel, setListDmsIncludeChannel] = useState(false)
+  const [listDmsResultOpen, setListDmsResultOpen] = useState(false)
+
   // ── Limpar DMs ──
   const [clearDmsOpen, setClearDmsOpen] = useState(false)
   const [clearDmsIgnored, setClearDmsIgnored] = useState("")
@@ -68,6 +84,15 @@ export function ToolsPage() {
 
   // ── Validar token Discord ──
   const [discordTokenInput, setDiscordTokenInput] = useState("")
+
+  const handleListDms = async () => {
+    try {
+      await listDms.mutateAsync()
+      setListDmsResultOpen(true)
+    } catch (err) {
+      if (err instanceof ApiError) showErrorToast(err)
+    }
+  }
 
   const run = async (
     fn: () => Promise<unknown>,
@@ -113,7 +138,7 @@ export function ToolsPage() {
       {/* ── Automações de conta ── */}
       <div>
         <h2 className="mb-3 text-sm font-medium text-foreground">Automações de conta</h2>
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card className="bg-surface">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-3">
@@ -174,6 +199,37 @@ export function ToolsPage() {
               >
                 Executar
               </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-surface">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-3">
+                <Inbox className="h-5 w-5 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">Listar DMs abertas</CardTitle>
+              </div>
+              <CardDescription className="text-xs">
+                Consulta as conversas diretas abertas usando o token configurado.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={listDmsIncludeChannel}
+                  onChange={(e) => setListDmsIncludeChannel(e.target.checked)}
+                  className="h-3.5 w-3.5 accent-accent"
+                />
+                <span className="text-xs text-muted-foreground">Incluir ID do canal</span>
+              </label>
+              <AsyncButton
+                size="sm"
+                className="w-full"
+                loading={listDms.isPending}
+                onClick={handleListDms}
+              >
+                Listar DMs
+              </AsyncButton>
             </CardContent>
           </Card>
         </div>
@@ -284,6 +340,88 @@ export function ToolsPage() {
       </div>
 
       {/* ════════════════ Dialogs ════════════════ */}
+
+      {/* Listar DMs abertas — resultados */}
+      <Dialog open={listDmsResultOpen} onOpenChange={setListDmsResultOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-sm">
+              <Inbox className="h-4 w-4" />
+              DMs abertas
+              {listDms.data && (
+                <Badge variant="outline" className="ml-1 text-[11px]">
+                  {listDms.data.channels.length}
+                </Badge>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          {listDms.data && listDms.data.channels.length === 0 && (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              Nenhuma DM aberta encontrada.
+            </p>
+          )}
+
+          {listDms.data && listDms.data.channels.length > 0 && (
+            <ScrollArea className="h-[60vh]">
+              <div className="space-y-1.5 pr-3">
+                {listDms.data.channels.map((ch) => (
+                  <div
+                    key={ch.id}
+                    className="rounded-md border border-border bg-surface px-3 py-2"
+                  >
+                    {/* Recipient info */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        {(ch.recipient_global_name ?? ch.recipient_username) && (
+                          <p className="truncate text-xs font-medium text-foreground">
+                            {ch.recipient_global_name ?? ch.recipient_username}
+                          </p>
+                        )}
+                        {ch.recipient_username && (
+                          <p className="truncate text-[11px] text-muted-foreground">
+                            @{ch.recipient_username}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* IDs */}
+                    <div className="mt-1.5 space-y-1">
+                      {ch.recipient_id && (
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="text-[10px] uppercase tracking-wide text-muted-foreground/60">
+                            User ID
+                          </span>
+                          <div className="flex items-center gap-0.5">
+                            <span className="font-mono text-[11px] text-muted-foreground">
+                              {ch.recipient_id}
+                            </span>
+                            <CopyButton value={ch.recipient_id} />
+                          </div>
+                        </div>
+                      )}
+                      {listDmsIncludeChannel && (
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="text-[10px] uppercase tracking-wide text-muted-foreground/60">
+                            Canal ID
+                          </span>
+                          <div className="flex items-center gap-0.5">
+                            <span className="font-mono text-[11px] text-muted-foreground">
+                              {ch.id}
+                            </span>
+                            <CopyButton value={ch.id} />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Fechar DMs */}
       <ToolConfirmDialog

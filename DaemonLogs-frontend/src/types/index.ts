@@ -285,7 +285,10 @@ export interface GuildChannel {
   type: number
 }
 
-export interface DmChannel {
+export interface OpenDmChannel {
   id: string
-  recipient_ids: string[]
+  recipient_id: string | null
+  recipient_username: string | null
+  recipient_global_name: string | null
+  recipient_avatar: string | null
 }
