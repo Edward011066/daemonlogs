@@ -102,18 +102,24 @@ export async function deleteRelationshipsService(
     let client
     try {
       client = await createUserClient(token)
+      // relationships.cache: Map<Snowflake, RelationshipType> onde 1 = FRIEND
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const relationships = (client as any).relationships?.cache as Map<string, unknown> | undefined
+      const relationships = (client as any).relationships?.cache as Map<string, number> | undefined
 
       if (relationships) {
-        for (const [userId] of relationships) {
+        for (const [userId, relType] of relationships) {
           if (controller.signal.aborted) break
+          if (relType !== 1) continue // 1 = FRIEND; ignora blocked/pending
           if (ignoredUserIds.includes(userId)) continue
 
           try {
+            // discord.js-selfbot-v13 lança erro intencional em deleteRelationship
+            // ("Risky action, not finished yet."), então chamamos a API interna diretamente.
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await (client as any).relationships.deleteRelationship(userId)
-          } catch { /* sem permissão */ }
+            await (client as any).api.users['@me'].relationships[userId].delete({
+              DiscordContext: { location: 'ContextMenu' },
+            })
+          } catch { /* sem permissão ou já removido */ }
 
           await sleep(PLAN_RULES.tools.action_delay_ms)
         }
