@@ -12,6 +12,11 @@ export function PixQRCode({ payment }: PixQRCodeProps) {
   const remaining = useCountdown(payment.chargeExpiresAt)
   const expired = remaining === 0
 
+  // Woovi retorna URL; MisticPay retorna base64 puro sem prefixo data URI
+  const qrSrc = payment.qrCodeImage.startsWith("http")
+    ? payment.qrCodeImage
+    : `data:image/png;base64,${payment.qrCodeImage}`
+
   const valueBRL = (payment.valorCentavos / 100).toLocaleString("pt-BR", {
     style: "currency",
     currency: "BRL",
@@ -37,7 +42,7 @@ export function PixQRCode({ payment }: PixQRCodeProps) {
             {payment.qrCodeImage && (
               <div className="flex justify-center">
                 <img
-                  src={payment.qrCodeImage}
+                  src={qrSrc}
                   alt="QR Code PIX"
                   className="h-48 w-48 rounded-md"
                 />
