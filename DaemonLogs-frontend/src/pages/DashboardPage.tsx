@@ -1,12 +1,39 @@
-import { Activity, Radio, Shield, Users } from "lucide-react"
+import { Activity, ArrowRight, Radio, Shield, Users } from "lucide-react"
+import { Link } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { PlanBadge } from "@/components/shared/PlanBadge"
 import { ServersMarquee } from "@/components/shared/ServersMarquee"
+import { EventBadge } from "@/components/events/EventBadge"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { useMonitoring } from "@/hooks/useMonitoring"
 import { useTargets } from "@/hooks/useTargets"
 import { useEvents } from "@/hooks/useEvents"
+import type { DiscordEvent } from "@/types"
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const sec = Math.floor(diff / 1000)
+  if (sec < 60) return `${sec}s`
+  const min = Math.floor(sec / 60)
+  if (min < 60) return `${min}min`
+  const h = Math.floor(min / 60)
+  if (h < 24) return `${h}h`
+  return `${Math.floor(h / 24)}d`
+}
+
+function RecentEventsRow({ event }: { event: DiscordEvent }) {
+  const target = event.conta_alvo.username ?? event.conta_alvo.discord_user_id
+  return (
+    <div className="flex items-center gap-3 border-b border-border px-4 py-2.5 last:border-b-0">
+      <EventBadge type={event.tipo} showIcon className="shrink-0 text-[10px]" />
+      <span className="min-w-0 flex-1 truncate text-xs text-foreground/80">{target}</span>
+      <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
+        {timeAgo(event.created_at)}
+      </span>
+    </div>
+  )
+}
 
 function StatCard({ title, value, icon: Icon }: { title: string; value: string | number; icon: typeof Radio }) {
   return (
@@ -26,7 +53,7 @@ export function DashboardPage() {
   const { data: user, isLoading: userLoading } = useCurrentUser()
   const { data: monitoring } = useMonitoring()
   const { data: targets } = useTargets()
-  const { data: events } = useEvents({ limit: 1 })
+  const { data: events } = useEvents({ limit: 5 })
 
   if (userLoading) {
     return (
@@ -75,6 +102,29 @@ export function DashboardPage() {
       </div>
 
       <ServersMarquee />
+
+      {events && events.items.length > 0 && (
+        <Card className="bg-surface">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium">
+              <Activity className="h-4 w-4 text-muted-foreground" />
+              Últimos eventos
+            </CardTitle>
+            <Link
+              to="/events"
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-accent"
+            >
+              Ver todos
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </CardHeader>
+          <CardContent className="p-0 pb-1">
+            {events.items.map((event) => (
+              <RecentEventsRow key={event.id} event={event} />
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {user?.plan === "freemium" && user.clear_chat_quota && (
         <Card className="bg-surface">

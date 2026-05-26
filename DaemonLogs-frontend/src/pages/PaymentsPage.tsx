@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { CreditCard, Sparkles } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PlanBadge } from "@/components/shared/PlanBadge"
 import { AsyncButton } from "@/components/shared/AsyncButton"
 import { ErrorAlert } from "@/components/shared/ErrorAlert"
@@ -39,54 +39,64 @@ export function PaymentsPage() {
         <p className="text-sm text-muted-foreground">Gerencie sua assinatura</p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="bg-surface">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <CreditCard className="h-4 w-4 text-muted-foreground" />
-              Plano atual
-            </CardTitle>
-            <CardDescription className="flex items-center gap-2">
-              {user && <PlanBadge plan={user.plan} />}
-            </CardDescription>
-          </CardHeader>
-          {user?.plan === "freemium" && (
-            <CardContent className="space-y-3">
-              <div className="rounded-md border border-accent/20 bg-accent/5 p-3 text-xs text-accent">
-                <p className="font-medium">Atualize para Premium</p>
-                <ul className="mt-1 list-inside list-disc space-y-0.5 text-accent/80">
-                  <li>Alvos ilimitados</li>
-                  <li>Sem limite de deleção de mensagens</li>
-                  <li>Suporte prioritário</li>
-                </ul>
-              </div>
+      {/* Plan card */}
+      <Card className="bg-surface">
+        <CardHeader className="flex flex-row items-center justify-between pb-3">
+          <div className="flex items-center gap-2">
+            <CreditCard className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Plano atual</CardTitle>
+          </div>
+          {user && <PlanBadge plan={user.plan} />}
+        </CardHeader>
 
-              {paymentDone ? (
-                <p className="text-center text-sm text-success">
-                  Pagamento confirmado! Recarregue a página para ver seu novo plano.
-                </p>
-              ) : initiate.data && correlationId ? (
-                <PixQRCode payment={initiate.data} />
-              ) : (
-                <AsyncButton
-                  className="w-full gap-2"
-                  loading={initiate.isPending}
-                  onClick={handleInitiate}
-                >
-                  <Sparkles className="h-4 w-4" />
-                  Assinar Premium via PIX
-                </AsyncButton>
-              )}
+        {user?.plan === "premium" && user.premium_expires_at && (
+          <CardContent className="pt-0">
+            <p className="text-xs text-muted-foreground">
+              Premium ativo até{" "}
+              <span className="font-medium text-success">
+                {new Date(user.premium_expires_at).toLocaleDateString("pt-BR")}
+              </span>
+            </p>
+          </CardContent>
+        )}
 
-              {initiate.error && <ErrorAlert error={initiate.error} />}
-            </CardContent>
-          )}
-        </Card>
+        {user?.plan === "freemium" && (
+          <CardContent className="space-y-3 pt-0">
+            <div className="rounded-md border border-accent/20 bg-accent/5 p-3 text-xs text-accent">
+              <p className="font-medium">Atualize para Premium</p>
+              <ul className="mt-1 list-inside list-disc space-y-0.5 text-accent/80">
+                <li>Alvos ilimitados</li>
+                <li>Sem limite de deleção de mensagens</li>
+                <li>Suporte prioritário</li>
+              </ul>
+            </div>
 
-        <div className="space-y-3">
-          <h2 className="text-sm font-medium text-foreground">Histórico de pagamentos</h2>
-          <PaymentHistory />
-        </div>
+            {paymentDone ? (
+              <p className="text-center text-sm text-success">
+                Pagamento confirmado! Recarregue a página para ver seu novo plano.
+              </p>
+            ) : initiate.data && correlationId ? (
+              <PixQRCode payment={initiate.data} />
+            ) : (
+              <AsyncButton
+                className="w-full gap-2"
+                loading={initiate.isPending}
+                onClick={handleInitiate}
+              >
+                <Sparkles className="h-4 w-4" />
+                Assinar Premium via PIX
+              </AsyncButton>
+            )}
+
+            {initiate.error && <ErrorAlert error={initiate.error} />}
+          </CardContent>
+        )}
+      </Card>
+
+      {/* Payment history */}
+      <div className="space-y-3">
+        <h2 className="text-sm font-semibold text-foreground">Histórico de pagamentos</h2>
+        <PaymentHistory />
       </div>
     </div>
   )
