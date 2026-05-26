@@ -6,7 +6,21 @@ import { checkAllUsersServerCountPremium } from './modules/plans/service.js'
 
 const PORT = Number(process.env.PORT) || 3000
 
+// Valida que apenas 1 gateway de pagamento está ativo.
+// "Ativo" = credenciais preenchidas no .env. Se ambos estiverem configurados, o sistema não pode
+// determinar qual usar e aborta com mensagem clara para o operador.
+function assertSinglePaymentGateway() {
+  const wooviActive = !!process.env.WOOVI_API_KEY?.trim()
+  const misticpayActive = !!(process.env.MISTICPAY_CI?.trim() && process.env.MISTICPAY_CS?.trim())
+  if (wooviActive && misticpayActive) {
+    console.error('ATENÇÃO: CONFLITO DE GATEWAYS, VOCÊ TEM MAIS DE 1 GATEWAY ATIVO.')
+    process.exit(1)
+  }
+}
+
 async function main() {
+  assertSinglePaymentGateway()
+
   const app = await buildApp()
 
   // Startup da API — falha aqui é fatal

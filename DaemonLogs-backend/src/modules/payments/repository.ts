@@ -5,6 +5,7 @@ export async function createPagamento(data: {
   usuario_id: number
   valor_centavos: number
   status: string
+  gateway: string
   brcode?: string
   qrcode_image?: string
   charge_expires_at?: Date
@@ -15,6 +16,10 @@ export async function createPagamento(data: {
 
 export async function findPagamentoByCorrelationId(correlationId: string) {
   return prisma.pagamentos.findUnique({ where: { correlation_id: correlationId } })
+}
+
+export async function findPagamentoByGatewayChargeId(gatewayChargeId: string) {
+  return prisma.pagamentos.findFirst({ where: { woovi_charge_id: gatewayChargeId } })
 }
 
 export async function findActivePagamentoByUser(usuarioId: number) {
@@ -37,6 +42,7 @@ export async function findPagamentosByUser(usuarioId: number) {
       correlation_id: true,
       valor_centavos: true,
       status: true,
+      gateway: true,
       premium_expires_at: true,
       created_at: true,
     },
@@ -47,6 +53,13 @@ export async function updatePagamentoStatus(id: number, status: string, premiumE
   return prisma.pagamentos.update({
     where: { id },
     data: { status, ...(premiumExpiresAt ? { premium_expires_at: premiumExpiresAt } : {}) },
+  })
+}
+
+export async function findUserUsernameById(userId: number) {
+  return prisma.usuarios.findUnique({
+    where: { id: userId },
+    select: { username: true },
   })
 }
 

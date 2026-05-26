@@ -1,9 +1,12 @@
 ---
-description: "Use when: implementar pagamento, integração Woovi, PIX, charge PIX, webhook de pagamento, ativar conta premium, criar cobrança, validar webhook, OPENPIX:CHARGE_COMPLETED, correlationID, rawBody, assinatura HMAC, src/modules/payments, POST /payments/initiate, POST /webhooks/woovi."
+description: "Use when: implementar integração Woovi, OpenPix, charge Woovi, webhook Woovi, webhook OpenPix, OPENPIX:CHARGE_COMPLETED, correlationID, rawBody, assinatura HMAC, paymentLinkID, POST /payments/initiate, POST /payments/status/:correlationId, POST /webhooks/woovi, src/modules/payments com Woovi/OpenPix."
 applyTo: "src/modules/payments/**"
 ---
 
 # Pagamentos — Integração Woovi PIX
+
+> Esta instrução é exclusiva para Woovi/OpenPix.
+> Para qualquer tarefa relacionada à MisticPay, consulte primeiro o arquivo Documentação da API MisticPay.md na raiz do repositório e siga a instrução dedicada da MisticPay.
 
 > Spec completa da API Woovi: `api-1-woovi.yaml` na raiz do repositório.
 > Sandbox: `https://api.woovi-sandbox.com` | Produção: `https://api.woovi.com`

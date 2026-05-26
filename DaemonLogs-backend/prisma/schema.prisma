@@ -128,6 +128,7 @@ model pagamentos {
   usuario            usuarios @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
   valor_centavos     Int
   status             String   @db.VarChar(20)
+  gateway            String   @default("woovi") @db.VarChar(20)
   brcode             String?  @db.Text
   qrcode_image       String?  @db.Text
   charge_expires_at  DateTime?

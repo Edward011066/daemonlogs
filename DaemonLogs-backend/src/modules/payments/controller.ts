@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
-import { initiatePaymentService, getPaymentStatusService, listPaymentsService, handleWooviWebhook } from './service.js'
+import { initiatePaymentService, getPaymentStatusService, listPaymentsService, handleWooviWebhook, handleMisticPayWebhook } from './service.js'
 
 export async function initiatePaymentController(request: FastifyRequest, reply: FastifyReply) {
   const result = await initiatePaymentService(request.user.sub)
@@ -25,5 +25,10 @@ export async function wooviWebhookController(request: FastifyRequest, reply: Fas
     { signature, legacyHmacSignature },
     request.body
   )
+  return reply.code(200).send({ ok: true })
+}
+
+export async function misticPayWebhookController(request: FastifyRequest, reply: FastifyReply) {
+  await handleMisticPayWebhook(request.body)
   return reply.code(200).send({ ok: true })
 }
