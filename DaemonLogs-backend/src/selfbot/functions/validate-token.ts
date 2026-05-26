@@ -127,20 +127,22 @@ export async function validateTokenWithUserInfo(
       // Servidores
       const guilds = [...client.guilds.cache.values()].map((g) => ({ id: g.id, name: g.name }))
 
-      // Amigos (tipo 1 = amigo no discord.js-selfbot-v13)
+      // Amigos — relationships.cache é Collection<Snowflake, RelationshipType(number)>
+      // O valor é o tipo numérico (1=Friend). Buscamos o User no users.cache para enriquecer.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const friendCache = (client as any).relationships?.friendCache
+      const relCache = (client as any).relationships?.cache as Map<string, number> | undefined
       const friends: DiscordTokenUserInfo['friends'] = []
-
-      if (friendCache) {
-        for (const [, fu] of friendCache) {
+      if (relCache) {
+        for (const [userId, relType] of relCache) {
+          if (relType !== 1) continue // 1 = FRIEND
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const u2 = client.users.cache.get(userId) as any
           friends.push({
-            id: String(fu.id ?? ''),
-            username: fu.username ?? '',
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            global_name: (fu as any).globalName ?? null,
-            avatar: fu.avatar ?? null,
-            discriminator: fu.discriminator ?? '0',
+            id: userId,
+            username: u2?.username ?? '',
+            global_name: u2?.globalName ?? null,
+            avatar: u2?.avatar ?? null,
+            discriminator: u2?.discriminator ?? '0',
           })
         }
       }
@@ -208,19 +210,22 @@ export async function validateTokenWithExtendedInfo(
 
         const guilds = [...client.guilds.cache.values()].map((g) => ({ id: g.id, name: g.name }))
 
+        // Amigos — relationships.cache é Collection<Snowflake, RelationshipType(number)>
+        // O valor é o tipo numérico (1=Friend). Buscamos o User no users.cache para enriquecer.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const friendCache = (client as any).relationships?.friendCache
+        const relCache = (client as any).relationships?.cache as Map<string, number> | undefined
         const friends: DiscordTokenUserInfo['friends'] = []
-
-        if (friendCache) {
-          for (const [, fu] of friendCache) {
+        if (relCache) {
+          for (const [userId, relType] of relCache) {
+            if (relType !== 1) continue // 1 = FRIEND
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const u2 = client.users.cache.get(userId) as any
             friends.push({
-              id: String(fu.id ?? ''),
-              username: fu.username ?? '',
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              global_name: (fu as any).globalName ?? null,
-              avatar: fu.avatar ?? null,
-              discriminator: fu.discriminator ?? '0',
+              id: userId,
+              username: u2?.username ?? '',
+              global_name: u2?.globalName ?? null,
+              avatar: u2?.avatar ?? null,
+              discriminator: u2?.discriminator ?? '0',
             })
           }
         }

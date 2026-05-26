@@ -233,10 +233,7 @@ export interface DiscordUserInfo {
     phone: string | null
     mfa_enabled: boolean
     guild_count: number
-    guilds: Array<{
-      id: string
-      name: string
-    }>
+    guilds: Array<{ id: string; name: string }>
     friend_count: number
     friends: Array<{
       id: string
@@ -245,6 +242,40 @@ export interface DiscordUserInfo {
       avatar: string | null
       discriminator: string
     }>
+    // Campos estendidos — podem ou não ser retornados pela API
+    bio?: string | null
+    authenticator_types?: number[]
+    age_verification_status?: number
+    user_sessions?: Array<{
+      id_hash: string
+      approx_last_used_time: string | null
+      client_info: {
+        os: string | null
+        platform: string | null
+        location: string | null
+      }
+    }>
+    payment_sources?: Array<{
+      id: string
+      type: number
+      invalid: boolean
+      flags: number
+      deleted_at: string | null
+      brand: string | null
+      last_4: string | null
+      expires_month: number | null
+      expires_year: number | null
+      email: string | null
+      billing_address: { name: string; country: string } | null
+      country: string | null
+      payment_gateway: number
+      payment_gateway_source_id: string | null
+      default: boolean
+    }>
+    email_settings?: {
+      categories: Record<string, boolean>
+      initialized: boolean
+    } | null
   } | null
 }
 
