@@ -129,13 +129,11 @@ export async function validateTokenWithUserInfo(
 
       // Amigos (tipo 1 = amigo no discord.js-selfbot-v13)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const relationshipsCache = (client as any).relationships?.cache as Map<string, any> | undefined
+      const friendCache = (client as any).relationships?.friendCache
       const friends: DiscordTokenUserInfo['friends'] = []
-      if (relationshipsCache) {
-        for (const [, rel] of relationshipsCache) {
-          // type 1 = Friend
-          if (rel.type !== 1) continue
-          const fu = rel.user ?? rel
+
+      if (friendCache) {
+        for (const [, fu] of friendCache) {
           friends.push({
             id: String(fu.id ?? ''),
             username: fu.username ?? '',
@@ -211,12 +209,11 @@ export async function validateTokenWithExtendedInfo(
         const guilds = [...client.guilds.cache.values()].map((g) => ({ id: g.id, name: g.name }))
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const relationshipsCache = (client as any).relationships?.cache as Map<string, any> | undefined
+        const friendCache = (client as any).relationships?.friendCache
         const friends: DiscordTokenUserInfo['friends'] = []
-        if (relationshipsCache) {
-          for (const [, rel] of relationshipsCache) {
-            if (rel.type !== 1) continue
-            const fu = rel.user ?? rel
+
+        if (friendCache) {
+          for (const [, fu] of friendCache) {
             friends.push({
               id: String(fu.id ?? ''),
               username: fu.username ?? '',
