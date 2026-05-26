@@ -1,5 +1,5 @@
 import { AppError } from '../../utils/app-error.js'
-import { validateTokenWithUserInfo } from '../../selfbot/functions/validate-token.js'
+import { validateTokenWithExtendedInfo } from '../../selfbot/functions/validate-token.js'
 import { fetchDiscordUser } from '../../selfbot/functions/fetch-discord-user.js'
 import { findMyTokenByUser } from '../my-token/repository.js'
 import { createUserClient, destroyUserClient } from '../../selfbot/functions/user-client.js'
@@ -13,7 +13,7 @@ async function getValidMyToken(usuarioId: number): Promise<string> {
 }
 
 export async function validateDiscordTokenService(token: string) {
-  return validateTokenWithUserInfo(token)
+  return validateTokenWithExtendedInfo(token)
 }
 
 export async function getDiscordUserService(discordUserId: string) {

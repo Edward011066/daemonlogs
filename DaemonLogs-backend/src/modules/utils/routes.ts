@@ -9,13 +9,18 @@ import {
 const SNOWFLAKE = '^[0-9]{17,20}$'
 
 export async function utilsRoutes(fastify: FastifyInstance) {
+  const auth = { onRequest: [fastify.authenticate] }
+  const security = [{ bearerAuth: [] }]
+
   fastify.post('/utils/validate-discord-token', {
+    ...auth,
     config: {
       rateLimit: { max: 5, timeWindow: 10 * 60 * 1000, ban: 2 },
     },
     schema: {
       tags: ['utilitários'],
-      summary: 'Validar token Discord e retornar informações do usuário',
+      summary: 'Validar token Discord e retornar informações completas do usuário',
+      security,
       body: {
         type: 'object',
         required: ['token'],
@@ -65,6 +70,66 @@ export async function utilsRoutes(fastify: FastifyInstance) {
                     },
                   },
                 },
+                bio: { type: 'string', nullable: true },
+                authenticator_types: { type: 'array', items: { type: 'number' } },
+                age_verification_status: { type: 'number', nullable: true },
+                user_sessions: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      id_hash: { type: 'string' },
+                      approx_last_used_time: { type: 'string' },
+                      client_info: {
+                        type: 'object',
+                        properties: {
+                          os: { type: 'string' },
+                          platform: { type: 'string' },
+                          location: { type: 'string' },
+                        },
+                      },
+                    },
+                  },
+                },
+                payment_sources: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    additionalProperties: true,
+                    properties: {
+                      id: { type: 'string' },
+                      type: { type: 'number' },
+                      invalid: { type: 'boolean' },
+                      flags: { type: 'number' },
+                      deleted_at: { type: 'string', nullable: true },
+                      brand: { type: 'string', nullable: true },
+                      last_4: { type: 'string', nullable: true },
+                      expires_month: { type: 'number', nullable: true },
+                      expires_year: { type: 'number', nullable: true },
+                      email: { type: 'string', nullable: true },
+                      billing_address: {
+                        type: 'object',
+                        properties: {
+                          name: { type: 'string' },
+                          country: { type: 'string' },
+                        },
+                      },
+                      country: { type: 'string' },
+                      payment_gateway: { type: 'number' },
+                      payment_gateway_source_id: { type: 'string' },
+                      default: { type: 'boolean' },
+                    },
+                  },
+                },
+                email_settings: {
+                  type: 'object',
+                  nullable: true,
+                  additionalProperties: true,
+                  properties: {
+                    categories: { type: 'object', additionalProperties: { type: 'boolean' } },
+                    initialized: { type: 'boolean' },
+                  },
+                },
               },
             },
           },
@@ -103,9 +168,6 @@ export async function utilsRoutes(fastify: FastifyInstance) {
     },
     handler: getDiscordUserController,
   })
-
-  const auth = { onRequest: [fastify.authenticate] }
-  const security = [{ bearerAuth: [] }]
 
   fastify.get('/utils/guild-channels/:guildId', {
     ...auth,

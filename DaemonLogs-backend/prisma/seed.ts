@@ -1,3 +1,10 @@
+// Para rodar ele dentro do docker execute o comando abaixo:
+// docker exec daemonlogs-api npm run db:seed
+//
+// Esse script é usado para popular o banco de dados com dados iniciais. Ele é executado usando o comando `npx prisma db seed`.
+
+
+
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcrypt'
 

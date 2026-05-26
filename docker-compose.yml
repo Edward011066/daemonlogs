@@ -28,7 +28,8 @@ services:
       - ./.env
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    # Sem porta externa — apenas a rede interna do compose
+    ports:
+      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-daemonlogs} -d ${POSTGRES_DB:-daemonlogs_db}"]
       interval: 10s
