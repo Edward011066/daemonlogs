@@ -1,13 +1,13 @@
 ---
-description: "Use when: estilizar componente, adicionar classe Tailwind, definir cor, criar variante visual, configurar tema, trabalhar em src/**/*.tsx, src/**/*.css, tailwind.config.ts."
+description: "Use when: estilizar componente, reestruturar UI, reduzir sobrecarga visual, adicionar classe Tailwind, definir cor, criar variante visual, configurar tema, trabalhar em src/**/*.tsx, src/**/*.css, tailwind.config.ts."
 applyTo: "src/**/*.tsx,src/**/*.css,tailwind.config.ts"
 ---
 
 # Estilo e Tema
 
-## Tokens de cor — Dracula (toned down)
+## Tokens de cor — preserve o sistema atual
 
-O tema é inspirado no Dracula, com menos saturação e sem efeitos de brilho. As cores são definidas como variáveis CSS em `src/index.css` e expostas pelo `tailwind.config.ts`:
+O projeto já possui um sistema de tokens definido em `src/index.css` e exposto pelo `tailwind.config.ts`. Preserve esse sistema, mas use os tokens para criar hierarquia visual real em vez de repetir blocos visuais idênticos:
 
 | Token Tailwind | Uso |
 |---------------|-----|
@@ -126,12 +126,28 @@ const PLAN_CLASSES = {
 } as const
 ```
 
-## Layout base
+## Hierarquia visual para dados complexos
 
-- Sidebar: `w-60` fixa, scroll interno
-- Conteúdo: `flex-1 min-w-0`, scroll no `<main>`
-- Cards de estatísticas: `grid grid-cols-4 gap-4`
-- Tabela de eventos: `col-span-2` + painel lateral `col-span-1`
+- Cada tela deve ter no máximo 3 planos visuais claros: fundo da página, superfícies primárias e superfícies secundárias.
+- Use `bg-surface` para blocos principais e `bg-surface-2` para metadado, filtros, chips técnicos e blocos auxiliares.
+- Não trate todo card como protagonista. Um ou dois blocos dominantes por viewport bastam.
+- Use cor de destaque para ação, seleção e status importante; não pinte todas as superfícies com acento.
+- Metadados técnicos devem parecer secundários: `font-mono`, texto menor e contraste mais baixo.
+
+## Layout responsivo para master-detail
+
+- Cards de overview: `grid-cols-1`, `sm:grid-cols-2`, `xl:grid-cols-4` como padrão de progressão.
+- Layouts master-detail devem empilhar em telas pequenas e abrir duas colunas apenas quando houver largura real.
+- Filtros, métricas e ações primárias devem aparecer antes da lista principal, nunca disputando espaço com o detalhe técnico.
+- Em desktop, preserve área suficiente para tabela/lista e detalhe lado a lado quando a tarefa envolver comparação.
+- Em mobile, prefira sequência linear com CTA claras e detalhe em dialog/página dedicada.
+
+## Densidade e legibilidade
+
+- Resumos textuais longos devem ser truncados ou limitados por linhas; o texto completo fica no detalhe.
+- IDs, hashes, timestamps completos e valores operacionais devem ser agrupados em blocos compactos, nunca espalhados como headline.
+- Use bordas, separadores e contraste para agrupar informações relacionadas antes de recorrer a mais cor.
+- Se uma superfície já tiver título, métrica e ação primária, evite adicionar chips decorativos extras sem função informacional.
 
 ## Tipografia
 

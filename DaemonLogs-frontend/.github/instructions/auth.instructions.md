@@ -1,5 +1,5 @@
 ---
-description: "Use when: criar página de login, criar formulário de registro, criar formulário de ativação, criar recuperação de senha, criar callback OAuth, configurar roteamento de autenticação, implementar rota protegida, tratar AUTH_MODE, ajustar redirect 401, editar logout, criar DiscordLoginButton, criar GuestRoute, criar ProtectedRoute, trabalhar em src/pages/auth/**, src/components/auth/**, src/router.tsx, src/lib/auth.ts, src/lib/api.ts, src/components/layout/Header.tsx."
+description: "Use when: criar página de login, criar formulário de registro, criar formulário de ativação, criar recuperação de senha, criar callback OAuth, reduzir fricção de auth, configurar roteamento de autenticação, implementar rota protegida, tratar AUTH_MODE, ajustar redirect 401, editar logout, criar DiscordLoginButton, criar GuestRoute, criar ProtectedRoute, trabalhar em src/pages/auth/**, src/components/auth/**, src/router.tsx, src/lib/auth.ts, src/lib/api.ts, src/components/layout/Header.tsx."
 applyTo: "src/pages/auth/**,src/components/auth/**,src/router.tsx,src/lib/auth.ts,src/lib/api.ts,src/components/layout/Header.tsx"
 ---
 
@@ -20,6 +20,14 @@ Documentação completa: [FRONTEND DOCUMENTAÇÃO.md](../../FRONTEND%20DOCUMENTA
 - `src/lib/api.ts` — redirect global quando a API retorna `401`
 - `src/components/layout/Header.tsx` — ação de logout do usuário autenticado
 - `src/pages/auth/**` e `src/components/auth/**` — telas e formulários
+
+## UX de autenticação
+
+- Cada tela de auth deve ter um único objetivo primário: entrar, registrar, ativar, pedir reset ou redefinir senha.
+- Mostre apenas os campos e ações necessários para a etapa atual; o resto vira link secundário ou próxima etapa.
+- Uma ação primária por tela. Links como "já tenho conta", "esqueci a senha" e "reenviar código" devem ser secundários e claros.
+- Mensagens de erro devem ser curtas e acionáveis, sem despejar detalhes técnicos da API quando isso não ajudar o usuário.
+- Em mobile, priorize fluxo linear e largura confortável de formulário; em desktop, evite distrair com múltiplos blocos concorrendo com o form principal.
 
 ## AUTH_MODE — descoberta pelo frontend
 

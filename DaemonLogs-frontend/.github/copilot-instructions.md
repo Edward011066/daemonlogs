@@ -60,6 +60,55 @@ src/
 - Se houver conflito entre a spec e a documentação textual, **a spec vence**.
 - Se a spec não trouxer schema suficiente para uma rota já usada no app, não promova campos intuitivos para `src/types/index.ts` sem validação explícita.
 
+## Arquitetura obrigatória de UI para dados densos
+
+Ao implementar ou reestruturar qualquer tela alimentada pela API, siga este fluxo **antes** de desenhar componentes:
+
+1. Abra `api-endpoints.json` e identifique a entidade principal da tela.
+2. Liste os campos de primeiro impacto que merecem aparecer no resumo inicial.
+3. Identifique relações `1->N`, coleções grandes e blocos técnicos do payload.
+4. Defina onde acontece a separação entre **summary**, **detail**, **tabs/subviews** e **drill-down**.
+5. Defina fronteiras de carregamento sob demanda antes de renderizar listas ou relações profundas.
+
+### Progressive Disclosure é obrigatório
+
+Nunca renderize todos os campos de uma entidade de uma vez. Toda UI deve separar informações em níveis:
+
+- **Nível 1 — Summary/List view:** nome, status, usernames, IDs externos principais, timestamps relevantes e métricas curtas.
+- **Nível 2 — Detail surface:** drawer, sheet, dialog estruturado ou página dedicada.
+- **Nível 3 — Tabs/sections:** overview, eventos, pagamentos, logs, settings ou equivalentes do domínio.
+- **Nível 4 — Drill-down técnico:** tabelas detalhadas, IDs secundários, payloads extensos, blocos técnicos e JSON.
+
+### Entity-Centric Navigation
+
+- Toda entidade principal deve ser tratada como um objeto navegável.
+- Relações profundas nunca devem ser expandidas integralmente na lista principal.
+- Se o payload trouxer dados aninhados extensos, a lista principal mostra só contexto suficiente para decidir se vale abrir o detalhe.
+
+### Master -> Detail é o padrão padrão
+
+- Toda listagem deve usar uma superfície leve e filtrável como master view.
+- O detalhe deve abrir em drawer/sheet/dialog ou navegar para uma página própria quando o contexto exigir mais espaço.
+- Relações `1->N` devem virar subviews independentes com paginação, virtualização ou lazy fetch quando aplicável.
+
+### Performance-first rendering
+
+- Nunca renderize arrays extensos diretamente no DOM só porque vieram na resposta.
+- Prefira paginação, infinite scroll ou virtualização em listas potencialmente grandes.
+- Carregue coleções secundárias somente quando a seção correspondente for aberta.
+- Em telas de alto volume, exiba primeiro o que ajuda a triagem: usuário, `discord_user_id`, conteúdo textual, status, totais, data/hora e contexto humano.
+- IDs técnicos como `message_id`, `channel_id`, `guild_id`, hashes e campos operacionais devem aparecer como metadado secundário, nunca como headline.
+
+### O que a IA deve entregar ao propor UI
+
+Sempre explicite, em código e estrutura de componentes:
+
+- qual é a master view da entidade
+- qual é a surface de detail
+- quais seções carregam sob demanda
+- quais campos entram no summary e quais ficam no detalhe
+- como a UI evita dump visual do payload bruto
+
 ## Gotchas críticos da API
 
 ### Discord IDs são strings

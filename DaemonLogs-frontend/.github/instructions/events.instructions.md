@@ -1,5 +1,5 @@
 ---
-description: "Use when: editar feed de eventos, criar timeline de eventos, criar filtro de eventos, modelar payload de /events, renderizar tipo de evento, trabalhar em src/components/events/**, src/pages/EventsPage.tsx, src/hooks/useEvents.ts."
+description: "Use when: editar feed de eventos, criar timeline ou explorer de eventos, criar filtro de eventos, modelar payload de /events, renderizar tipo de evento, aplicar master-detail, trabalhar em src/components/events/**, src/pages/EventsPage.tsx, src/hooks/useEvents.ts."
 applyTo: "src/components/events/**,src/pages/EventsPage.tsx,src/hooks/useEvents.ts"
 ---
 
@@ -33,6 +33,28 @@ type RawEvent = {
 - Para eventos de mensagem, a própria spec descreve chaves como `conteudo` e `link_mensagem`; não renomeie para `content` no contrato cru sem mapper explícito
 - Para eventos de voz, trate nomes de canal/servidor e listas de usuários como opcionais no rendering
 - A UI deve degradar com elegância quando uma chave não existir ou `dados` vier `null`
+
+## Arquitetura visual obrigatória
+
+### Master view
+
+- O nível principal precisa ser leve e escaneável.
+- Mostre primeiro `tipo`, alvo (`conta_alvo.username ?? conta_alvo.discord_user_id`), preview textual curto quando existir e `created_at`.
+- `guild_name` e `channel_name` podem entrar como contexto secundário.
+- Nunca exponha `message_id`, `guild_id`, `channel_id` e o bloco completo de `dados` como headline.
+
+### Detail view
+
+- O detalhe deve abrir em drawer, dialog estruturado ou página dedicada.
+- Organize o conteúdo em grupos como **Overview**, **Contexto** e **Técnico**.
+- Conteúdo completo de mensagem, IDs, links e payloads mais extensos ficam no detalhe.
+- Se não houver endpoint dedicado de detalhe, derive a visualização a partir do item já carregado, mas não expanda todos os itens de uma vez.
+
+### Volume e paginação
+
+- Preserve a paginação do servidor com `page` e `limit`; o limite máximo documentado é 100.
+- Em volume alto, mantenha apenas um detalhe ativo por vez ou navegue para página/surface própria.
+- Não renderize arrays profundos de `dados` diretamente na lista principal; transforme-os em contagens, preview curto ou seção própria no detalhe.
 
 ## Filtros
 

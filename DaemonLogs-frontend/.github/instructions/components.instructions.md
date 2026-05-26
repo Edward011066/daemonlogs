@@ -1,5 +1,5 @@
 ---
-description: "Use when: criar componente React, editar componente, criar dialog, criar card, criar form, criar tabela, criar badge, criar botão, trabalhar em src/components/**."
+description: "Use when: criar componente React, editar componente, reestruturar UI, criar master-detail, criar dialog, criar card, criar form, criar tabela, criar badge, criar botão, trabalhar em src/components/**."
 applyTo: "src/components/**"
 ---
 
@@ -104,6 +104,54 @@ import { Monitor, Target, MessageSquare, Activity, Settings, Trash2, Plus } from
 
 // ❌ — sem emoji, sem SVG inline, sem outras libs de ícone
 ```
+
+## Componentes para entidades navegáveis e listas densas
+
+Em superfícies com volume alto, componha a UI em dois blocos claros: **resumo reutilizável** e **detalhe reutilizável**.
+
+- Para listas operacionais, prefira `Table` ou linhas enxutas antes de grade de cards grandes.
+- `Card` é ótimo para overview, CTA, métricas e detalhes isolados; não é a estrutura padrão para despejar relações profundas.
+- O item da lista principal deve responder rapidamente: quem é, qual o estado atual e por que vale abrir o detalhe.
+- Relações `1->N`, listas grandes e payloads técnicos ficam fora da linha principal.
+- Quando o detalhe precisar de scroll próprio, use `ScrollArea` dentro da surface de detalhe.
+- Em mobile, troque side panel por dialog/página dedicada; em desktop, preserve comparação entre lista e detalhe quando fizer sentido.
+
+```tsx
+import { Badge } from "@/components/ui/badge"
+import type { Target } from "@/types"
+
+interface TargetRowProps {
+  target: Target
+  onOpen: () => void
+}
+
+export function TargetRow({ target, onOpen }: TargetRowProps) {
+  const label = target.username_global ?? target.username ?? target.discord_user_id
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="flex w-full items-center justify-between rounded-lg border border-border bg-surface px-4 py-3 text-left transition-colors hover:bg-surface-2"
+    >
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium text-foreground">{label}</p>
+        <p className="text-xs text-muted-foreground">{target.discord_user_id}</p>
+      </div>
+
+      <Badge variant="outline" className="text-[11px]">
+        Detalhes
+      </Badge>
+    </button>
+  )
+}
+```
+
+### Metadados técnicos são secundários
+
+- IDs, hashes, timestamps completos, tokens e campos operacionais usam `font-mono`, `text-[11px]` ou `text-xs`, sempre com contraste secundário.
+- Conteúdo humano, status e métricas principais usam o primeiro plano visual.
+- Nunca misture metadado técnico com CTA primária no mesmo bloco sem hierarquia visual.
 
 ## Componentes de negócio compartilhados
 

@@ -1,5 +1,5 @@
 ---
-description: "Use when: chamar API, criar hook de dados, criar query, criar mutation, tratar erro de requisição, trabalhar em src/lib/api.ts, src/hooks/**, src/lib/**."
+description: "Use when: chamar API, criar hook de dados, criar query, criar mutation, modelar UI a partir da spec, definir lazy loading, tratar erro de requisição, trabalhar em src/lib/api.ts, src/hooks/**, src/lib/**."
 applyTo: "src/lib/api.ts,src/hooks/**,src/lib/**"
 ---
 
@@ -14,6 +14,58 @@ Spec OpenAPI: [api-endpoints.json](../../api-endpoints.json)
 - `FRONTEND.md` e `FRONTEND DOCUMENTAÇÃO.md` são contexto secundário para fluxo e UX.
 - Se houver conflito entre texto e spec, a spec vence.
 - Se a spec estiver incompleta para uma rota já usada no app, não invente campos. Procure consumidores/tipos já validados e use o menor contrato cru possível. Se a dúvida continuar, pare e peça confirmação.
+
+## Workflow obrigatório para telas alimentadas por API
+
+Antes de criar hook, query ou mutation para alimentar uma tela:
+
+1. Abra `api-endpoints.json` e confirme path, filtros, resposta e status codes.
+2. Identifique a entidade principal da tela.
+3. Separe campos de summary, detail, relações `1->N` e metadados técnicos.
+4. Defina quais dados podem carregar junto e quais devem depender de aba, seleção ou abertura do detalhe.
+5. Só então modele query keys, mappers locais e estados da interface.
+
+Mesmo quando a API retornar muitos campos, a UI não deve despejar o payload bruto. O hook pode expor o contrato cru, mas o componente precisa decidir o que é overview, detalhe e drill-down técnico.
+
+## Lazy loading guiado pela UI
+
+Coleções secundárias e subviews devem usar `enabled` ou chave de consulta específica para carregar apenas quando fizer sentido visualmente:
+
+```ts
+const { data: events } = useQuery({
+  queryKey: ["events", { targetId: selectedTargetId, page, limit }],
+  queryFn: () =>
+    apiFetch<EventsResponse>(
+      `/events?targetId=${selectedTargetId}&page=${page}&limit=${limit}`,
+    ),
+  enabled: activeTab === "events" && !!selectedTargetId,
+})
+```
+
+```ts
+type ReferralsResponse = {
+  total: number
+  items: Array<{ username: string; created_at: string }>
+}
+
+const referrals = useQuery({
+  queryKey: ["me", "referrals"],
+  queryFn: () => apiFetch<ReferralsResponse>("/me/referrals"),
+  enabled: activeTab === "referrals",
+})
+```
+
+## Contrato cru, adaptação local
+
+- O contrato compartilhado deve espelhar o backend.
+- A adaptação para labels amigáveis, preview textual, ordenação visual e agrupamento de campos acontece em mapper local, selector ou componente.
+- Campos técnicos continuam disponíveis, mas só devem ganhar destaque visual quando forem realmente a informação principal da tarefa.
+
+## Schema incompleto exige prudência extra
+
+- Se a spec documentar o endpoint mas não detalhar completamente a resposta, use o menor shape já validado no app.
+- Não promova inferências para `src/types/index.ts` só porque um consumer atual funciona.
+- Em listas potencialmente grandes, prefira uma UI que consuma o slice atual e deixe detalhes ou status complementares atrás de interação explícita.
 
 ## Tipos compartilhados devem espelhar a API crua
 
