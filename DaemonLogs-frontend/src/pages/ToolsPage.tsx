@@ -1,5 +1,6 @@
 import { useState } from "react"
 import {
+  Copy,
   Inbox,
   KeyRound,
   LogOut,
@@ -363,7 +364,41 @@ export function ToolsPage() {
           )}
 
           {listDms.data && listDms.data.channels.length > 0 && (
-            <ScrollArea className="h-[60vh]">
+            <>
+              {/* Cópia em massa */}
+              <div className="flex gap-2 border-b border-border pb-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 gap-1.5 text-xs"
+                  onClick={() => {
+                    const ids = listDms.data!.channels
+                      .map((ch) => ch.recipient_id)
+                      .filter(Boolean)
+                      .join(", ")
+                    navigator.clipboard.writeText(ids)
+                    toast.success("IDs de usuários copiados!")
+                  }}
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                  Copiar User IDs
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 gap-1.5 text-xs"
+                  onClick={() => {
+                    const ids = listDms.data!.channels.map((ch) => ch.id).join(", ")
+                    navigator.clipboard.writeText(ids)
+                    toast.success("IDs de canais copiados!")
+                  }}
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                  Copiar Canal IDs
+                </Button>
+              </div>
+
+              <ScrollArea className="h-[60vh]">
               <div className="space-y-1.5 pr-3">
                 {listDms.data.channels.map((ch) => (
                   <div
@@ -419,6 +454,7 @@ export function ToolsPage() {
                 ))}
               </div>
             </ScrollArea>
+            </>
           )}
         </DialogContent>
       </Dialog>

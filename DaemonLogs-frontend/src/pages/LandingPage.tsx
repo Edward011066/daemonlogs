@@ -103,8 +103,8 @@ export function LandingPage() {
         </h1>
 
         <p className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground">
-          Sem drama, sem obsessão — só dados. DaemonLogs monitora atividades no Discord de forma
-          silenciosa, registra cada evento e te dá controle real sobre o que acontece ao seu redor.
+          DaemonLogs monitora atividades no Discord de forma
+          silenciosa, te dá controle real sobre o que acontece ao seu redor. Você pode verificar canais que uma pessoa entra, quem estava lá, mensagens enviadas, editadas, apagadas. Além é claro, de você conseguir automatizar sua conta.
           Joe aprovaria.
         </p>
 
