@@ -1,10 +1,20 @@
-import { useState } from "react"
+import { useEffect, useState, type KeyboardEvent, type ReactNode } from "react"
 import { cn } from "@/lib/utils"
-import { ChevronDown, ChevronUp, Hash, Server, Users } from "lucide-react"
+import {
+  ChevronDown,
+  ChevronUp,
+  Clock3,
+  ExternalLink,
+  Hash,
+  Server,
+  User,
+  Users,
+  type LucideIcon,
+} from "lucide-react"
 import { EventBadge, EVENT_ICON, EVENT_DOT_CLASSES } from "./EventBadge"
-import type { DiscordEvent, EventType, VoiceJoinDados, VoiceLeaveDados, VoiceSwitchDados, DiscordUserRef } from "@/types"
+import type { DiscordEvent, DiscordUserRef, VoiceJoinDados, VoiceLeaveDados, VoiceSwitchDados } from "@/types"
 
-// ─── helpers ──────────────────────────────────────────────────────────────────
+type EventData = Record<string, unknown>
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -29,7 +39,103 @@ function formatDate(dateStr: string): string {
   })
 }
 
-// ─── sub-components ───────────────────────────────────────────────────────────
+function getRawData(event: DiscordEvent): EventData {
+  return event.dados && typeof event.dados === "object"
+    ? (event.dados as EventData)
+    : {}
+}
+
+function getString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null
+}
+
+function getStringByKeys(data: EventData, keys: string[]): string | null {
+  for (const key of keys) {
+    const value = getString(data[key])
+    if (value) return value
+  }
+  return null
+}
+
+function getUsers(value: unknown): DiscordUserRef[] {
+  if (!Array.isArray(value)) return []
+
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object") return []
+
+    const data = item as Record<string, unknown>
+    const username = getString(data.username)
+    const discordUserId = getString(data.discord_user_id)
+
+    if (!username || !discordUserId) return []
+
+    return [{ username, discord_user_id: discordUserId }]
+  })
+}
+
+function getTargetLabel(event: DiscordEvent) {
+  return event.conta_alvo.username ?? event.conta_alvo.discord_user_id
+}
+
+function getEventTimestamp(event: DiscordEvent) {
+  return getString(getRawData(event).timestamp) ?? event.created_at
+}
+
+function truncateText(value: string, max = 180) {
+  return value.length <= max ? value : `${value.slice(0, max - 1)}...`
+}
+
+function getMessageDetails(event: DiscordEvent) {
+  const data = getRawData(event)
+
+  return {
+    guildName: getStringByKeys(data, ["guild_name"]),
+    channelName: getStringByKeys(data, ["channel_name", "canal_nome"]),
+    content: getStringByKeys(data, ["conteudo", "content", "mensagem"]),
+    deletedContent: getStringByKeys(data, ["conteudo_apagado", "deleted_content", "content_deleted"]),
+    beforeContent: getStringByKeys(data, ["conteudo_anterior", "conteudo_antigo", "content_before"]),
+    afterContent: getStringByKeys(data, ["conteudo_novo", "conteudo_editado", "content_after"]),
+    messageId: getStringByKeys(data, ["message_id"]),
+    guildId: getStringByKeys(data, ["guild_id"]),
+    channelId: getStringByKeys(data, ["channel_id"]),
+    link: getStringByKeys(data, ["link_mensagem", "message_link"]),
+  }
+}
+
+function SummaryRow({ icon: Icon, children }: { icon: LucideIcon; children: ReactNode }) {
+  return (
+    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      <Icon className="h-3.5 w-3.5" />
+      {children}
+    </span>
+  )
+}
+
+function DetailBlock({
+  title,
+  value,
+  tone = "default",
+}: {
+  title: string
+  value: string
+  tone?: "default" | "danger" | "warning" | "success"
+}) {
+  const toneClass =
+    tone === "danger"
+      ? "border-destructive/20 bg-destructive/5"
+      : tone === "warning"
+        ? "border-warning/20 bg-warning/5"
+        : tone === "success"
+          ? "border-success/20 bg-success/5"
+          : "border-border bg-surface-2"
+
+  return (
+    <div className={cn("rounded-lg border p-3", toneClass)}>
+      <p className="mb-1 text-[11px] uppercase tracking-wide text-muted-foreground">{title}</p>
+      <p className="whitespace-pre-wrap break-words font-mono text-xs text-foreground/90">{value}</p>
+    </div>
+  )
+}
 
 function UserChip({ user }: { user: DiscordUserRef }) {
   return (
@@ -40,147 +146,208 @@ function UserChip({ user }: { user: DiscordUserRef }) {
   )
 }
 
-function VoiceEventBody({ tipo, dados }: { tipo: EventType; dados: Record<string, unknown> }) {
-  if (tipo === "VOICE_JOIN") {
-    const d = dados as unknown as VoiceJoinDados
+function EventSummary({ event }: { event: DiscordEvent }) {
+  const data = getRawData(event)
+  const timestamp = getEventTimestamp(event)
+
+  if (event.tipo === "VOICE_JOIN") {
+    const voice = data as unknown as VoiceJoinDados
     return (
       <div className="space-y-2">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <Server className="h-3.5 w-3.5 text-accent/70" />
-            {d.guild_name}
-          </span>
-          <span className="flex items-center gap-1">
-            <Hash className="h-3.5 w-3.5 text-info/70" />
-            {d.canal_novo_nome}
-          </span>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          {voice.guild_name && <SummaryRow icon={Server}>{voice.guild_name}</SummaryRow>}
+          {voice.canal_novo_nome && <SummaryRow icon={Hash}>{voice.canal_novo_nome}</SummaryRow>}
+          <SummaryRow icon={Users}>{getUsers(data.usuarios_presentes).length} na call</SummaryRow>
+          <SummaryRow icon={Clock3}>{formatDate(timestamp)}</SummaryRow>
         </div>
-        {d.usuarios_presentes?.length > 0 && (
-          <div className="space-y-1">
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Users className="h-3.5 w-3.5" />
-              {d.usuarios_presentes.length} na call
-            </span>
-            <div className="flex flex-wrap gap-1">
-              {d.usuarios_presentes.map((u) => (
-                <UserChip key={u.discord_user_id} user={u} />
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     )
   }
 
-  if (tipo === "VOICE_LEAVE") {
-    const d = dados as unknown as VoiceLeaveDados
+  if (event.tipo === "VOICE_LEAVE") {
+    const voice = data as unknown as VoiceLeaveDados
     return (
       <div className="space-y-2">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <Server className="h-3.5 w-3.5 text-accent/70" />
-            {d.guild_name}
-          </span>
-          <span className="flex items-center gap-1">
-            <Hash className="h-3.5 w-3.5 text-info/70" />
-            {d.canal_anterior_nome}
-          </span>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          {voice.guild_name && <SummaryRow icon={Server}>{voice.guild_name}</SummaryRow>}
+          {voice.canal_anterior_nome && <SummaryRow icon={Hash}>{voice.canal_anterior_nome}</SummaryRow>}
+          <SummaryRow icon={Users}>{getUsers(data.usuarios_que_ficaram).length} ficaram</SummaryRow>
+          <SummaryRow icon={Clock3}>{formatDate(timestamp)}</SummaryRow>
         </div>
-        {d.usuarios_que_ficaram?.length > 0 && (
-          <div className="space-y-1">
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Users className="h-3.5 w-3.5" />
-              {d.usuarios_que_ficaram.length} que ficaram
-            </span>
-            <div className="flex flex-wrap gap-1">
-              {d.usuarios_que_ficaram.map((u) => (
-                <UserChip key={u.discord_user_id} user={u} />
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     )
   }
 
-  if (tipo === "VOICE_SWITCH") {
-    const d = dados as unknown as VoiceSwitchDados
+  if (event.tipo === "VOICE_SWITCH") {
+    const voice = data as unknown as VoiceSwitchDados
     return (
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1">
-          <Server className="h-3.5 w-3.5 text-accent/70" />
-          {d.guild_name}
-        </span>
-        <span className="flex items-center gap-1">
-          <Hash className="h-3.5 w-3.5 text-muted-foreground/60" />
-          {d.canal_anterior_nome}
-        </span>
-        <span className="text-muted-foreground/50">→</span>
-        <span className="flex items-center gap-1">
-          <Hash className="h-3.5 w-3.5 text-info/70" />
-          {d.canal_novo_nome}
-        </span>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        {voice.guild_name && <SummaryRow icon={Server}>{voice.guild_name}</SummaryRow>}
+        <SummaryRow icon={Hash}>{`${voice.canal_anterior_nome} -> ${voice.canal_novo_nome}`}</SummaryRow>
+        <SummaryRow icon={Clock3}>{formatDate(timestamp)}</SummaryRow>
       </div>
     )
   }
 
-  // MESSAGE_* / MENTION — extrair como string | null para evitar 'unknown' em JSX
-  const d = dados as Record<string, unknown>
-  const guildName   = typeof d.guild_name   === "string" ? d.guild_name   : null
-  const channelName = typeof d.channel_name === "string" ? d.channel_name : null
-  const content     = typeof d.content      === "string" ? d.content      : null
+  const message = getMessageDetails(event)
+  const summary =
+    event.tipo === "MESSAGE_EDIT"
+      ? message.afterContent ?? message.beforeContent ?? message.content ?? "Mensagem editada"
+      : event.tipo === "MESSAGE_DELETE"
+        ? message.deletedContent ?? message.content ?? "Mensagem apagada"
+        : message.content ?? "Evento de mensagem"
 
   return (
-    <div className="space-y-1.5">
-      {(guildName || channelName) && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          {guildName && (
-            <span className="flex items-center gap-1">
-              <Server className="h-3.5 w-3.5 text-accent/70" />
-              {guildName}
-            </span>
-          )}
-          {channelName && (
-            <span className="flex items-center gap-1">
-              <Hash className="h-3.5 w-3.5 text-info/70" />
-              {channelName}
-            </span>
-          )}
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        {message.guildName && <SummaryRow icon={Server}>{message.guildName}</SummaryRow>}
+        {message.channelName && <SummaryRow icon={Hash}>{message.channelName}</SummaryRow>}
+        <SummaryRow icon={Clock3}>{formatDate(timestamp)}</SummaryRow>
+      </div>
+      <p className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-xs text-foreground/90">
+        {truncateText(summary)}
+      </p>
+    </div>
+  )
+}
+
+function EventDetails({ event }: { event: DiscordEvent }) {
+  const data = getRawData(event)
+
+  if (event.tipo === "VOICE_JOIN") {
+    const voice = data as unknown as VoiceJoinDados
+    return (
+      <div className="space-y-3">
+        <div className="grid gap-3 md:grid-cols-2">
+          {voice.guild_name && <DetailBlock title="Servidor" value={voice.guild_name} />}
+          {voice.canal_novo_nome && <DetailBlock title="Canal" value={voice.canal_novo_nome} tone="success" />}
+        </div>
+        {getUsers(data.usuarios_presentes).length > 0 && (
+          <div className="rounded-lg border border-border bg-surface-2 p-3">
+            <p className="mb-2 text-[11px] uppercase tracking-wide text-muted-foreground">Usuários presentes</p>
+            <div className="flex flex-wrap gap-1.5">
+              {getUsers(data.usuarios_presentes).map((user) => (
+                <UserChip key={user.discord_user_id} user={user} />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  if (event.tipo === "VOICE_LEAVE") {
+    const voice = data as unknown as VoiceLeaveDados
+    return (
+      <div className="space-y-3">
+        <div className="grid gap-3 md:grid-cols-2">
+          {voice.guild_name && <DetailBlock title="Servidor" value={voice.guild_name} />}
+          {voice.canal_anterior_nome && <DetailBlock title="Canal anterior" value={voice.canal_anterior_nome} tone="warning" />}
+        </div>
+        {getUsers(data.usuarios_que_ficaram).length > 0 && (
+          <div className="rounded-lg border border-border bg-surface-2 p-3">
+            <p className="mb-2 text-[11px] uppercase tracking-wide text-muted-foreground">Quem ficou na call</p>
+            <div className="flex flex-wrap gap-1.5">
+              {getUsers(data.usuarios_que_ficaram).map((user) => (
+                <UserChip key={user.discord_user_id} user={user} />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  if (event.tipo === "VOICE_SWITCH") {
+    const voice = data as unknown as VoiceSwitchDados
+    return (
+      <div className="grid gap-3 md:grid-cols-3">
+        {voice.guild_name && <DetailBlock title="Servidor" value={voice.guild_name} />}
+        {voice.canal_anterior_nome && <DetailBlock title="Saiu de" value={voice.canal_anterior_nome} tone="warning" />}
+        {voice.canal_novo_nome && <DetailBlock title="Entrou em" value={voice.canal_novo_nome} tone="success" />}
+      </div>
+    )
+  }
+
+  const message = getMessageDetails(event)
+  const details = [
+    message.guildName ? { title: "Servidor", value: message.guildName } : null,
+    message.channelName ? { title: "Canal", value: message.channelName } : null,
+    message.messageId ? { title: "Message ID", value: message.messageId } : null,
+    message.guildId ? { title: "Guild ID", value: message.guildId } : null,
+    message.channelId ? { title: "Channel ID", value: message.channelId } : null,
+  ].filter(Boolean) as { title: string; value: string }[]
+
+  const deletedValue = event.tipo === "MESSAGE_DELETE"
+    ? message.deletedContent ?? message.content
+    : message.deletedContent
+
+  return (
+    <div className="space-y-3">
+      {details.length > 0 && (
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {details.map((detail) => (
+            <DetailBlock key={detail.title} title={detail.title} value={detail.value} />
+          ))}
         </div>
       )}
-      {content && (
-        <p className="rounded border border-border bg-surface-2 px-3 py-2 text-xs text-foreground/80 font-mono">
-          {content}
-        </p>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        {message.content && event.tipo !== "MESSAGE_DELETE" && (
+          <DetailBlock title="Conteúdo" value={message.content} tone="success" />
+        )}
+        {deletedValue && (
+          <DetailBlock title="Conteúdo apagado" value={deletedValue} tone="danger" />
+        )}
+        {message.beforeContent && (
+          <DetailBlock title="Antes" value={message.beforeContent} tone="warning" />
+        )}
+        {message.afterContent && (
+          <DetailBlock title="Depois" value={message.afterContent} tone="success" />
+        )}
+      </div>
+
+      {message.link && (
+        <a
+          href={message.link}
+          target="_blank"
+          rel="noreferrer"
+          onClick={(event) => event.stopPropagation()}
+          className="inline-flex items-center gap-1 text-xs text-accent hover:underline"
+        >
+          <ExternalLink className="h-3.5 w-3.5" />
+          Abrir mensagem
+        </a>
       )}
     </div>
   )
 }
 
-// ─── EventCard ────────────────────────────────────────────────────────────────
-
-function EventCard({ event, isLast }: { event: DiscordEvent; isLast: boolean }) {
-  const [expanded, setExpanded] = useState(false)
+function EventCard({
+  event,
+  isLast,
+  expanded,
+  onToggle,
+}: {
+  event: DiscordEvent
+  isLast: boolean
+  expanded: boolean
+  onToggle: () => void
+}) {
   const Icon = EVENT_ICON[event.tipo]
   const dotClass = EVENT_DOT_CLASSES[event.tipo]
 
-  const hasDetails =
-    event.tipo === "VOICE_JOIN" ||
-    event.tipo === "VOICE_LEAVE" ||
-    event.tipo === "VOICE_SWITCH" ||
-    event.tipo === "MESSAGE_SENT" ||
-    event.tipo === "MESSAGE_EDIT" ||
-    event.tipo === "MESSAGE_DELETE" ||
-    event.tipo === "MENTION"
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault()
+      onToggle()
+    }
+  }
 
   return (
     <div className="relative flex gap-4">
-      {/* Linha vertical */}
-      {!isLast && (
-        <div className="absolute left-[19px] top-10 bottom-0 w-px bg-border" />
-      )}
+      {!isLast && <div className="absolute bottom-0 left-[19px] top-10 w-px bg-border" />}
 
-      {/* Ícone */}
       <div
         className={cn(
           "relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border",
@@ -190,53 +357,41 @@ function EventCard({ event, isLast }: { event: DiscordEvent; isLast: boolean }) 
         <Icon className="h-4 w-4" />
       </div>
 
-      {/* Conteúdo */}
       <div className="flex-1 pb-6">
-        <div className="rounded-lg border border-border bg-surface px-4 py-3 shadow-sm">
-          {/* Header */}
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <EventBadge type={event.tipo} showIcon />
-              <span className="text-sm font-medium text-foreground">
-                {event.conta_alvo.username}
-              </span>
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={onToggle}
+          onKeyDown={handleKeyDown}
+          className={cn(
+            "rounded-lg border border-border bg-surface px-4 py-3 shadow-sm transition-colors",
+            expanded ? "border-accent/30" : "hover:border-accent/20 hover:bg-surface/90",
+          )}
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <EventBadge type={event.tipo} showIcon />
+                <span className="flex items-center gap-1 text-sm font-medium text-foreground">
+                  <User className="h-3.5 w-3.5 text-muted-foreground" />
+                  {getTargetLabel(event)}
+                </span>
+              </div>
+
+              <EventSummary event={event} />
             </div>
-            <div className="flex items-center gap-3">
-              <span
-                className="text-xs text-muted-foreground"
-                title={formatDate(event.created_at)}
-              >
-                {timeAgo(event.created_at)}
-              </span>
-              <span className="hidden text-xs text-muted-foreground/60 sm:inline">
-                {formatDate(event.created_at)}
-              </span>
+
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <span title={formatDate(getEventTimestamp(event))}>{timeAgo(getEventTimestamp(event))}</span>
+              <span className="hidden sm:inline">{formatDate(getEventTimestamp(event))}</span>
+              {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </div>
           </div>
 
-          {/* Body principal */}
-          {hasDetails && (
-            <div className="mt-3">
-              <VoiceEventBody tipo={event.tipo} dados={event.dados} />
-            </div>
-          )}
-
-          {/* Toggle dados brutos */}
-          <button
-            onClick={() => setExpanded((v) => !v)}
-            className="mt-3 flex items-center gap-1 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
-          >
-            {expanded ? (
-              <><ChevronUp className="h-3 w-3" /> Recolher dados brutos</>
-            ) : (
-              <><ChevronDown className="h-3 w-3" /> Ver dados brutos</>
-            )}
-          </button>
-
           {expanded && (
-            <pre className="mt-2 overflow-x-auto rounded border border-border bg-surface-2 p-3 text-xs text-muted-foreground font-mono leading-relaxed">
-              {JSON.stringify(event.dados, null, 2)}
-            </pre>
+            <div className="mt-4 border-t border-border pt-4">
+              <EventDetails event={event} />
+            </div>
           )}
         </div>
       </div>
@@ -244,17 +399,32 @@ function EventCard({ event, isLast }: { event: DiscordEvent; isLast: boolean }) 
   )
 }
 
-// ─── EventTimeline ────────────────────────────────────────────────────────────
-
 interface EventTimelineProps {
   events: DiscordEvent[]
 }
 
 export function EventTimeline({ events }: EventTimelineProps) {
+  const [expandedId, setExpandedId] = useState<number | null>(events[0]?.id ?? null)
+
+  useEffect(() => {
+    if (!events.length) {
+      setExpandedId(null)
+      return
+    }
+
+    setExpandedId((current) => (events.some((event) => event.id === current) ? current : events[0].id))
+  }, [events])
+
   return (
     <div className="space-y-0">
-      {events.map((event, i) => (
-        <EventCard key={event.id} event={event} isLast={i === events.length - 1} />
+      {events.map((event, index) => (
+        <EventCard
+          key={event.id}
+          event={event}
+          isLast={index === events.length - 1}
+          expanded={expandedId === event.id}
+          onToggle={() => setExpandedId((current) => (current === event.id ? null : event.id))}
+        />
       ))}
     </div>
   )

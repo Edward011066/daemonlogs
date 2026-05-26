@@ -1,5 +1,18 @@
 import prisma from '../../plugins/prisma.js'
 
+export async function findUserOwnDiscordInfo(usuarioId: number) {
+  return prisma.usuarios.findUnique({
+    where: { id: usuarioId },
+    select: {
+      discord_id: true,
+      contas_monitoramento: {
+        where: { is_valid: true },
+        select: { token: true },
+      },
+    },
+  })
+}
+
 export async function findAllTargetsByUser(usuarioId: number) {
   return prisma.contas_alvos.findMany({ where: { usuario_id: usuarioId } })
 }

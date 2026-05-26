@@ -2,6 +2,7 @@ import { Activity, Radio, Shield, Users } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { PlanBadge } from "@/components/shared/PlanBadge"
+import { ServersMarquee } from "@/components/shared/ServersMarquee"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { useMonitoring } from "@/hooks/useMonitoring"
 import { useTargets } from "@/hooks/useTargets"
@@ -72,6 +73,8 @@ export function DashboardPage() {
           icon={Shield}
         />
       </div>
+
+      <ServersMarquee />
 
       {user?.plan === "freemium" && user.clear_chat_quota && (
         <Card className="bg-surface">

@@ -74,4 +74,18 @@
     font-family: "Fira Code", "JetBrains Mono", monospace;
     font-size: 0.875em;
   }
+
+  @keyframes servers-marquee {
+    from {
+      transform: translateX(0);
+    }
+
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  .servers-marquee-track {
+    animation: servers-marquee 55s linear infinite;
+  }
 }

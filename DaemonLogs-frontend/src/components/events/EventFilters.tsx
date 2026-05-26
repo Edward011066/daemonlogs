@@ -92,7 +92,7 @@ export function EventFilters({ filters, onChange }: EventFiltersProps) {
               <SelectItem value="all">Todos os alvos</SelectItem>
               {targets?.map((t) => (
                 <SelectItem key={t.discord_user_id} value={t.discord_user_id}>
-                  {t.display_name || t.username}
+                  {t.username_global ?? t.username ?? t.discord_user_id}
                 </SelectItem>
               ))}
             </SelectContent>

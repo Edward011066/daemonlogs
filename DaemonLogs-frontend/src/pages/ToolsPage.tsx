@@ -1,12 +1,31 @@
 import { useState } from "react"
-import { MessageSquareOff, LogOut, Trash2, MessageCircleOff, Server } from "lucide-react"
+import {
+  KeyRound,
+  LogOut,
+  Mail,
+  MessageCircleOff,
+  MessageSquareOff,
+  Phone,
+  Server,
+  ShieldCheck,
+  Trash2,
+  User,
+  Users,
+} from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
+import { AsyncButton } from "@/components/shared/AsyncButton"
 import { ToolConfirmDialog } from "@/components/tools/ToolConfirmDialog"
-import { useCloseDm, useLeaveServer, useDeleteRelationships } from "@/hooks/useTools"
+import {
+  useCloseDm,
+  useDeleteRelationships,
+  useLeaveServer,
+  useValidateDiscordToken,
+} from "@/hooks/useTools"
 import { useClearChatDms, useClearChatChannel, useClearChatServer } from "@/hooks/useClearChat"
 import { toast } from "sonner"
 import { ApiError } from "@/lib/api"
@@ -22,6 +41,7 @@ export function ToolsPage() {
   const closeDm = useCloseDm()
   const leaveServer = useLeaveServer()
   const deleteRel = useDeleteRelationships()
+  const validateDiscordToken = useValidateDiscordToken()
   const clearDms = useClearChatDms()
   const clearChannel = useClearChatChannel()
   const clearServer = useClearChatServer()
@@ -51,6 +71,9 @@ export function ToolsPage() {
   const [clearServerGuildId, setClearServerGuildId] = useState("")
   const [clearServerIgnored, setClearServerIgnored] = useState("")
 
+  // ── Validar token Discord ──
+  const [discordTokenInput, setDiscordTokenInput] = useState("")
+
   const run = async (
     fn: () => Promise<unknown>,
     successMsg: string,
@@ -64,6 +87,26 @@ export function ToolsPage() {
       if (err instanceof ApiError) showErrorToast(err)
     }
   }
+
+  const handleValidateDiscordToken = async () => {
+    if (!discordTokenInput.trim()) {
+      toast.error("Informe um token Discord para validar.")
+      return
+    }
+
+    try {
+      const result = await validateDiscordToken.mutateAsync(discordTokenInput.trim())
+      if (result.valid) {
+        toast.success("Token válido. Dados do usuário carregados.")
+      } else {
+        toast.error("O token informado não é válido.")
+      }
+    } catch (err) {
+      if (err instanceof ApiError) showErrorToast(err)
+    }
+  }
+
+  const validatedUser = validateDiscordToken.data?.user
 
   return (
     <div className="space-y-6">
@@ -198,6 +241,169 @@ export function ToolsPage() {
               <Button size="sm" className="w-full" onClick={() => setClearServerOpen(true)}>
                 Executar
               </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <Separator />
+
+      <div>
+        <h2 className="mb-3 text-sm font-medium text-foreground">Utilitários</h2>
+        <div className="grid gap-4 xl:grid-cols-2">
+          <Card className="bg-surface">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-3">
+                <KeyRound className="h-5 w-5 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">Validar token Discord</CardTitle>
+              </div>
+              <CardDescription className="text-xs">
+                Consulta o endpoint utilitário da API e mostra um resumo completo da conta
+                associada ao token informado.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Token Discord</Label>
+                <Input
+                  type="password"
+                  value={discordTokenInput}
+                  onChange={(e) => setDiscordTokenInput(e.target.value)}
+                  placeholder="Cole aqui o token para validar"
+                  className="font-mono text-xs"
+                />
+              </div>
+
+              <AsyncButton
+                className="w-full"
+                loading={validateDiscordToken.isPending}
+                onClick={handleValidateDiscordToken}
+              >
+                Validar token
+              </AsyncButton>
+
+              {validateDiscordToken.data && (
+                <div className="space-y-4 rounded-xl border border-border bg-background/60 p-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge
+                      variant="outline"
+                      className={validateDiscordToken.data.valid
+                        ? "border-success/20 bg-success/10 text-success"
+                        : "border-destructive/20 bg-destructive/10 text-destructive"
+                      }
+                    >
+                      {validateDiscordToken.data.valid ? "Token válido" : "Token inválido"}
+                    </Badge>
+
+                    {validatedUser?.mfa_enabled && (
+                      <Badge variant="outline" className="border-accent/20 bg-accent/10 text-accent">
+                        MFA ativo
+                      </Badge>
+                    )}
+                  </div>
+
+                  {validatedUser ? (
+                    <div className="space-y-4">
+                      <div className="rounded-lg border border-border bg-surface-2 p-3">
+                        <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          {validatedUser.global_name ?? validatedUser.username}
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          @{validatedUser.username}
+                          {validatedUser.discriminator ? `#${validatedUser.discriminator}` : ""}
+                        </p>
+                        <p className="mt-1 font-mono text-[11px] text-muted-foreground">
+                          {validatedUser.id}
+                        </p>
+                      </div>
+
+                      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                        <div className="rounded-lg border border-border bg-surface-2 p-3">
+                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Servidores</p>
+                          <p className="mt-1 text-lg font-semibold text-foreground">{validatedUser.guild_count}</p>
+                        </div>
+                        <div className="rounded-lg border border-border bg-surface-2 p-3">
+                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Amigos</p>
+                          <p className="mt-1 text-lg font-semibold text-foreground">{validatedUser.friend_count}</p>
+                        </div>
+                        <div className="rounded-lg border border-border bg-surface-2 p-3">
+                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">E-mail</p>
+                          <p className="mt-1 truncate text-sm text-foreground">{validatedUser.email ?? "-"}</p>
+                        </div>
+                        <div className="rounded-lg border border-border bg-surface-2 p-3">
+                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Telefone</p>
+                          <p className="mt-1 text-sm text-foreground">{validatedUser.phone ?? "-"}</p>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-4 xl:grid-cols-2">
+                        <div className="rounded-lg border border-border bg-surface-2 p-3">
+                          <div className="mb-2 flex items-center gap-2 text-xs font-medium text-foreground">
+                            <Server className="h-3.5 w-3.5 text-muted-foreground" />
+                            Servidores detectados
+                          </div>
+                          {validatedUser.guilds.length ? (
+                            <ul className="space-y-1.5 text-xs text-muted-foreground">
+                              {validatedUser.guilds.slice(0, 5).map((guild) => (
+                                <li key={guild.id} className="flex items-center justify-between gap-2 rounded-md bg-background/70 px-2 py-1.5">
+                                  <span className="truncate text-foreground/90">{guild.name}</span>
+                                  <span className="font-mono text-[11px]">{guild.id}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">Nenhum servidor listado.</p>
+                          )}
+                        </div>
+
+                        <div className="rounded-lg border border-border bg-surface-2 p-3">
+                          <div className="mb-2 flex items-center gap-2 text-xs font-medium text-foreground">
+                            <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                            Amigos detectados
+                          </div>
+                          {validatedUser.friends.length ? (
+                            <ul className="space-y-1.5 text-xs text-muted-foreground">
+                              {validatedUser.friends.slice(0, 5).map((friend) => (
+                                <li key={friend.id} className="rounded-md bg-background/70 px-2 py-1.5">
+                                  <p className="truncate text-foreground/90">
+                                    {friend.global_name ?? friend.username}
+                                  </p>
+                                  <p className="truncate text-[11px] text-muted-foreground">
+                                    @{friend.username}
+                                    {friend.discriminator ? `#${friend.discriminator}` : ""}
+                                  </p>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">Nenhum amigo listado.</p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <ShieldCheck className="h-3.5 w-3.5" />
+                          MFA: {validatedUser.mfa_enabled ? "ativo" : "inativo"}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Mail className="h-3.5 w-3.5" />
+                          {validatedUser.email ?? "sem e-mail informado"}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Phone className="h-3.5 w-3.5" />
+                          {validatedUser.phone ?? "sem telefone informado"}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      A API não retornou dados de usuário para este token.
+                    </p>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

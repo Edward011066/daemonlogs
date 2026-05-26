@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { ServersMarquee } from "@/components/shared/ServersMarquee"
 import { getAuthMode, getToken } from "@/lib/auth"
 
 const FEATURES = [
@@ -133,6 +134,8 @@ export function LandingPage() {
             </div>
           ))}
         </div>
+
+        <ServersMarquee className="mt-16 w-full text-left" />
       </section>
 
       {/* Features */}

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { apiFetch } from "@/lib/api"
-import type { ToolsStatus } from "@/types"
+import type { DiscordUserInfo, ToolsStatus } from "@/types"
 
 export function useToolsStatus() {
   return useQuery({
@@ -60,5 +60,15 @@ export function useDeleteRelationships() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tools", "status"] })
     },
+  })
+}
+
+export function useValidateDiscordToken() {
+  return useMutation({
+    mutationFn: (token: string) =>
+      apiFetch<DiscordUserInfo>("/utils/validate-discord-token", {
+        method: "POST",
+        body: JSON.stringify({ token }),
+      }),
   })
 }

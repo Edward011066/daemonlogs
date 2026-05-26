@@ -53,9 +53,10 @@ export interface Target {
   id: number
   discord_user_id: string
   username: string
-  display_name: string
-  avatar_url: string | null
+  username_global: string | null
+  usuario_id: number
   created_at: string
+  updated_at: string
 }
 
 // ── Events ────────────────────────────────────────────────────────────────────
@@ -112,8 +113,17 @@ export interface MessageDados {
   guild_name?: string
   channel_id?: string
   channel_name?: string
-  timestamp: string
+  timestamp?: string
+  message_id?: string
+  link_mensagem?: string
+  conteudo?: string
+  conteudo_apagado?: string
+  conteudo_anterior?: string
+  conteudo_antigo?: string
+  conteudo_novo?: string
+  conteudo_editado?: string
   content?: string
+  deleted_content?: string
   content_before?: string
   content_after?: string
 }
@@ -131,11 +141,11 @@ export type EventDados =
 export interface DiscordEvent {
   id: number
   tipo: EventType
-  dados: EventDados & Record<string, unknown>
+  dados: (EventDados & Record<string, unknown>) | null
   created_at: string
   conta_alvo: {
     discord_user_id: string
-    username: string
+    username: string | null
   }
 }
 
@@ -149,10 +159,15 @@ export interface EventsResponse {
 // ── Servers ───────────────────────────────────────────────────────────────────
 
 export interface DiscordServer {
-  id: string
-  name: string
-  icon_url: string | null
-  member_count: number
+  id: number
+  guild_id: string
+  server_name: string
+  created_at: string
+}
+
+export interface ServersResponse {
+  total: number
+  items: DiscordServer[]
 }
 
 // ── Messages ──────────────────────────────────────────────────────────────────
@@ -212,8 +227,25 @@ export interface DiscordUserInfo {
     id: string
     username: string
     discriminator: string
+    global_name: string | null
     avatar: string | null
-  }
+    email: string | null
+    phone: string | null
+    mfa_enabled: boolean
+    guild_count: number
+    guilds: Array<{
+      id: string
+      name: string
+    }>
+    friend_count: number
+    friends: Array<{
+      id: string
+      username: string
+      global_name: string | null
+      avatar: string | null
+      discriminator: string
+    }>
+  } | null
 }
 
 export interface GuildChannel {
