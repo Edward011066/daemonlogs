@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 import { toast } from "sonner"
 import { ApiError } from "@/lib/api"
+import { isGuestMode } from "@/lib/guest"
 
 export function getErrorMessageContent(error: unknown): ReactNode {
   if (error instanceof ApiError) {
@@ -30,5 +31,6 @@ export function getErrorMessageContent(error: unknown): ReactNode {
 }
 
 export function showErrorToast(error: unknown) {
+  if (isGuestMode() && (error as Record<string, unknown>)?.status === 401) return
   toast.error(getErrorMessageContent(error))
 }

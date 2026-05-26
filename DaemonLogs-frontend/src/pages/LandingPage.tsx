@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import {
   Activity,
   Eye,
@@ -14,6 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { ServersMarquee } from "@/components/shared/ServersMarquee"
 import { getAuthMode, getToken } from "@/lib/auth"
+import { setGuestMode } from "@/lib/guest"
 
 const FEATURES = [
   {
@@ -59,6 +60,12 @@ export function LandingPage() {
   const isLocalAuth = getAuthMode() === "local"
   const guestPrimaryLink = isLocalAuth ? "/auth/register" : "/auth/login"
   const guestPrimaryText = isLocalAuth ? "Começar agora" : "Entrar com Discord"
+  const navigate = useNavigate()
+
+  const handleExplore = () => {
+    setGuestMode()
+    navigate("/dashboard")
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
@@ -115,9 +122,14 @@ export function LandingPage() {
             </Link>
           </Button>
           {!isLoggedIn && (
-            <Button size="lg" variant="outline" asChild>
-              <Link to="/auth/login">{isLocalAuth ? "Já tenho conta" : "Entrar"}</Link>
-            </Button>
+            <>
+              <Button size="lg" variant="outline" asChild>
+                <Link to="/auth/login">{isLocalAuth ? "Já tenho conta" : "Entrar"}</Link>
+              </Button>
+              <Button size="lg" variant="ghost" onClick={handleExplore}>
+                Explorar painel
+              </Button>
+            </>
           )}
         </div>
 

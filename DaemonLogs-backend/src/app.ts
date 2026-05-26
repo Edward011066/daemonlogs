@@ -2,6 +2,8 @@ import Fastify, { type FastifyError } from 'fastify'
 import cors from '@fastify/cors'
 import cookie from '@fastify/cookie'
 import { AppError } from './utils/app-error.js'
+import { destroyClient } from './selfbot/client-manager.js'
+import { findMonitoringTokenById } from './modules/monitoring/repository.js'
 import swaggerPlugin from './plugins/swagger.js'
 import authPlugin from './plugins/auth.js'
 import rateLimitPlugin from './plugins/rate-limit.js'
@@ -59,6 +61,32 @@ export async function buildApp() {
     await prisma.$queryRaw`SELECT 1`
     return { status: 'ok' }
   })
+
+  // Rota interna — chamada pelo token-validator worker para destruir clientes selfbot inválidos.
+  // Protegida por X-Internal-Secret; não exposta no Swagger nem fora da rede Docker.
+  fastify.post<{ Body: { id: number } }>(
+    '/internal/destroy-token',
+    {
+      schema: {
+        hide: true,
+        body: {
+          type: 'object',
+          required: ['id'],
+          properties: { id: { type: 'integer' } },
+        },
+      },
+    },
+    async (request, reply) => {
+      const secret = request.headers['x-internal-secret']
+      if (!process.env.INTERNAL_SECRET || secret !== process.env.INTERNAL_SECRET) {
+        return reply.code(403).send({ error: 'FORBIDDEN' })
+      }
+      const account = await findMonitoringTokenById(request.body.id)
+      if (!account) return reply.code(404).send({ error: 'NOT_FOUND' })
+      await destroyClient(account.token)
+      return reply.send({ ok: true })
+    },
+  )
 
   // Rotas
   await fastify.register(authRoutes)

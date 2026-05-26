@@ -96,5 +96,32 @@ services:
       api:
         condition: service_healthy
 
+  # ── Token Validator Worker ───────────────────────────────────────────────────
+  token-validator:
+    build:
+      context: ./DaemonLogs-backend
+    container_name: daemonlogs-token-validator
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    environment:
+      # Sobrepõe qualquer valor do .env — garante URL interna correta na rede Docker.
+      # No compose unificado o container precisa apontar para o serviço "api", não localhost.
+      API_INTERNAL_URL: http://api:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    command:
+      - sh
+      - -c
+      - |
+        PASS=$$(node -e 'process.stdout.write(encodeURIComponent(process.env.POSTGRES_PASSWORD))')
+        USER=$$(node -e 'process.stdout.write(encodeURIComponent(process.env.POSTGRES_USER))')
+        DB=$${POSTGRES_DB:-daemonlogs_db}
+        export DATABASE_URL="postgresql://$$USER:$$PASS@postgres:5432/$$DB"
+        node dist/workers/token-validator.js
+
 volumes:
   postgres_data:

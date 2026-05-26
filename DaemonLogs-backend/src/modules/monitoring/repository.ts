@@ -37,3 +37,10 @@ export async function findAllValidTokens() {
 export async function countActiveMonitoring() {
   return prisma.contas_monitoramento.count({ where: { is_valid: true } })
 }
+
+export async function findMonitoringTokenById(id: number) {
+  return prisma.contas_monitoramento.findUnique({
+    where: { id },
+    select: { token: true },
+  })
+}

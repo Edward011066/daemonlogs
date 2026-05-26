@@ -2,6 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Disable zoom on iOS and Android */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
+input,
+select,
+textarea,
+button {
+  font-size: 16px; /* prevents iOS auto-zoom on focus */
+  touch-action: manipulation;
+}
+
 @layer base {
   :root {
     /* ── Dracula palette (HSL) ─────────────────────────── */

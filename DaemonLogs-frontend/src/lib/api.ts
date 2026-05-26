@@ -1,4 +1,5 @@
 import { clearToken, getToken } from "./auth"
+import { isGuestMode } from "./guest"
 import { resolveApiErrorCopy, type ApiErrorRouteHint } from "./api-error-copy"
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000"
@@ -45,8 +46,10 @@ export async function apiFetch<T = unknown>(
   })
 
   if (response.status === 401) {
-    clearToken()
-    window.location.href = "/auth/login"
+    if (!isGuestMode()) {
+      clearToken()
+      window.location.href = "/auth/login"
+    }
     throw new ApiError("UNAUTHORIZED", "Sessão expirada.", undefined, 401)
   }
 
