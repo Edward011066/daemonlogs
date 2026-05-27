@@ -369,7 +369,20 @@ export function DiscordTokenResult({ data }: DiscordTokenResultProps) {
       <div className="p-3 sm:p-4">
         {tab === "geral" && (
           <div className="space-y-5">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 sm:hidden">
+              <SummaryMetric
+                label="Sessões"
+                value={String(user.user_sessions?.length ?? 0)}
+                icon={Clock}
+              />
+              <SummaryMetric
+                label="Pagamentos"
+                value={String(user.payment_sources?.length ?? 0)}
+                icon={CreditCard}
+              />
+            </div>
+
+            <div className="hidden grid-cols-2 gap-2 sm:grid sm:grid-cols-4">
               <SummaryMetric label="Servidores" value={String(user.guild_count)} icon={Server} />
               <SummaryMetric label="Amigos" value={String(user.friend_count)} icon={Users} />
               <SummaryMetric
