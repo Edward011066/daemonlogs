@@ -3,6 +3,7 @@ import { Server } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
+import { useGuestAwareNavigate } from "@/hooks/useGuestAwareNavigate"
 import { useCheckServerMonitoring } from "@/hooks/useServers"
 import { ApiError } from "@/lib/api"
 
@@ -12,6 +13,7 @@ interface ServerMonitoringLookupCardProps {
 
 export function ServerMonitoringLookupCard({ className }: ServerMonitoringLookupCardProps) {
   const [serverId, setServerId] = useState("")
+  const guestNavigate = useGuestAwareNavigate()
   const checkServer = useCheckServerMonitoring()
 
   const trimmedServerId = serverId.trim()
@@ -86,7 +88,15 @@ export function ServerMonitoringLookupCard({ className }: ServerMonitoringLookup
 
       {serverLookupError?.status === 404 && (
         <div className="mt-4 rounded-xl border border-warning/20 bg-warning/10 p-3 text-sm text-warning">
-          Ainda não encontramos esse servidor na rede monitorada.
+          <p>Ainda não encontramos esse servidor na rede monitorada.</p>
+          <Button
+            type="button"
+            variant="link"
+            className="mt-1 h-auto px-0 text-sm text-warning underline-offset-4 hover:underline"
+            onClick={() => guestNavigate("/monitoring-contribute")}
+          >
+            Monitorar esse server
+          </Button>
         </div>
       )}
 

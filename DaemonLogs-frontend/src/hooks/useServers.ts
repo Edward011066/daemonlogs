@@ -5,7 +5,7 @@ import type { ServerLookupResponse, ServersResponse } from "@/types"
 export function useServers() {
   return useQuery({
     queryKey: ["servers"],
-    queryFn: () => apiFetch<ServersResponse>("/servers"),
+    queryFn: () => apiFetch<ServersResponse>("/servers", { bypassDemo: true }),
     staleTime: 5 * 60_000,
   })
 }
@@ -14,6 +14,7 @@ export function useCheckServerMonitoring() {
   return useMutation({
     mutationFn: (guild_id: string) =>
       apiFetch<ServerLookupResponse>("/servers", {
+        bypassDemo: true,
         method: "POST",
         body: JSON.stringify({ guild_id }),
       }),

@@ -27,6 +27,7 @@ import { CopyButton } from "@/components/shared/CopyButton"
 import { ToolCard } from "@/components/tools/ToolCard"
 import { ToolConfirmDialog } from "@/components/tools/ToolConfirmDialog"
 import { DiscordTokenResult } from "@/components/tools/DiscordTokenResult"
+import { useGuestMode } from "@/contexts/GuestModeContext"
 import { useMyToken } from "@/hooks/useMyToken"
 import { useGuildChannels } from "@/hooks/useDiscordUtils"
 import {
@@ -40,6 +41,7 @@ import { useClearChatDms, useClearChatChannel, useClearChatServer } from "@/hook
 import { toast } from "sonner"
 import { ApiError } from "@/lib/api"
 import { showErrorToast } from "@/lib/error-display"
+import { cn } from "@/lib/utils"
 import type { DiscordUserInfo, OpenDmChannel } from "@/types"
 
 const parseIds = (raw: string): string[] =>
@@ -177,6 +179,7 @@ function PreviewList({
 }
 
 export function ToolsPage() {
+  const { isGuest } = useGuestMode()
   const closeDm = useCloseDm()
   const leaveServer = useLeaveServer()
   const deleteRel = useDeleteRelationships()
@@ -417,17 +420,27 @@ export function ToolsPage() {
   }
 
   const handleValidateDiscordToken = async () => {
-    if (!discordTokenInput.trim()) {
+    const tokenToValidate = discordTokenInput.trim() || (isGuest ? "demo-token" : "")
+
+    if (!tokenToValidate) {
       toast.error("Informe um token Discord para validar.")
       return
     }
 
     try {
-      const result = await validateDiscordToken.mutateAsync(discordTokenInput.trim())
+      const result = await validateDiscordToken.mutateAsync(tokenToValidate)
       if (result.valid) {
-        toast.success("Token válido. Dados do usuário carregados.")
+        toast.success(
+          isGuest
+            ? "Simulação carregada com sucesso."
+            : "Token válido. Dados do usuário carregados.",
+        )
       } else {
-        toast.error("O token informado não é válido.")
+        toast.error(
+          isGuest
+            ? "A simulação retornou um token inválido."
+            : "O token informado não é válido.",
+        )
       }
     } catch (err) {
       if (err instanceof ApiError) showErrorToast(err)
@@ -531,35 +544,56 @@ export function ToolsPage() {
       <div>
         <h2 className="mb-3 text-sm font-medium text-foreground">Utilitários</h2>
         <div className="grid gap-4 xl:grid-cols-2">
-          <Card className="bg-surface" data-allow-guest-interaction="true">
+          <Card
+            className={cn("bg-surface", isGuest && "border-accent/30 bg-accent/5")}
+            data-allow-guest-interaction="true"
+          >
             <CardHeader className="pb-3">
               <div className="flex items-center gap-3">
                 <KeyRound className="h-5 w-5 text-muted-foreground" />
                 <CardTitle className="text-sm font-medium">Validar token Discord</CardTitle>
+                {isGuest && (
+                  <Badge
+                    variant="outline"
+                    className="border-accent/20 bg-accent/10 text-[11px] text-accent"
+                  >
+                    Demo liberado
+                  </Badge>
+                )}
               </div>
               <CardDescription className="text-xs">
-                Consulta o endpoint utilitário da API e mostra um resumo completo da conta
-                associada ao token informado.
+                {isGuest
+                  ? "Experimente aqui uma resposta simulada do endpoint e visualize um resumo completo da conta demo."
+                  : "Consulta o endpoint utilitário da API e mostra um resumo completo da conta associada ao token informado."}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {isGuest && (
+                <div className="rounded-md border border-accent/20 bg-accent/10 px-3 py-2 text-xs text-accent">
+                  Modo demonstração: clique no botão para simular agora, mesmo sem preencher o campo.
+                </div>
+              )}
+
               <div className="space-y-1.5">
                 <Label className="text-xs">Token Discord</Label>
                 <Input
                   type="password"
                   value={discordTokenInput}
                   onChange={(e) => setDiscordTokenInput(e.target.value)}
-                  placeholder="Cole aqui o token para validar"
+                  placeholder={isGuest ? "Opcional no demo: deixe vazio ou digite qualquer texto" : "Cole aqui o token para validar"}
                   className="font-mono text-xs"
                 />
               </div>
 
               <AsyncButton
-                className="w-full"
+                className={cn(
+                  "w-full",
+                  isGuest && "border border-accent/30 bg-accent text-accent-foreground hover:bg-accent/90",
+                )}
                 loading={validateDiscordToken.isPending}
                 onClick={handleValidateDiscordToken}
               >
-                Validar token
+                {isGuest ? "Clique e simule aqui!" : "Validar token"}
               </AsyncButton>
 
               {validateDiscordToken.data && (

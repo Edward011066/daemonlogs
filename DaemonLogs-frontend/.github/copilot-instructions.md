@@ -33,6 +33,7 @@ React 18 + Vite + TypeScript frontend para a API REST de monitoramento Discord.
 8. Endpoints `202 Accepted` não bloqueiam a UI; use polling ou a reconsulta documentada para acompanhar o processamento.
 9. O frontend deve suportar `AUTH_MODE=local` e `AUTH_MODE=discord`; no modo Discord o JWT chega por `?token=`.
 10. Se a spec estiver incompleta, use o menor contrato já validado no app e peça confirmação antes de inventar campos.
+11. A Landing Page e suas superfícies públicas devem usar apenas dados reais da API; nunca injete mocks ou respostas demo em `src/pages/LandingPage.tsx`, `src/components/shared/ServersMarquee.tsx`, `src/components/shared/ServerMonitoringLookupCard.tsx`, `src/hooks/useServers.ts` ou `src/hooks/useTargetsAmount.ts`, mesmo em guest mode.
 
 ## Fonte de verdade
 

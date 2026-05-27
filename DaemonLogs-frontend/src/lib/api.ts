@@ -5,6 +5,10 @@ import { resolveDemoApiResponse } from "./demo-api"
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000"
 
+export interface ApiFetchOptions extends RequestInit {
+  bypassDemo?: boolean
+}
+
 export class ApiError extends Error {
   public readonly error: string
   public readonly meta?: Record<string, unknown>
@@ -33,9 +37,11 @@ export class ApiError extends Error {
 
 export async function apiFetch<T = unknown>(
   path: string,
-  options: RequestInit = {},
+  options: ApiFetchOptions = {},
 ): Promise<T> {
-  if (isGuestMode()) {
+  const { bypassDemo = false, ...fetchOptions } = options
+
+  if (!bypassDemo && isGuestMode()) {
     const demoResponse = resolveDemoApiResponse<T>(path, options)
     if (demoResponse !== undefined) return demoResponse
   }
@@ -43,11 +49,11 @@ export async function apiFetch<T = unknown>(
   const token = getToken()
 
   const response = await fetch(`${BASE_URL}${path}`, {
-    ...options,
+    ...fetchOptions,
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
+      ...fetchOptions.headers,
     },
   })
 
