@@ -172,6 +172,11 @@ export interface ServersResponse {
   items: DiscordServer[]
 }
 
+export interface ServerLookupResponse {
+  monitored: boolean
+  server: DiscordServer
+}
+
 // ── Messages ──────────────────────────────────────────────────────────────────
 
 export interface Message {
@@ -281,10 +286,25 @@ export interface DiscordUserInfo {
   } | null
 }
 
+export interface DiscordPublicUser {
+  id: string
+  username: string
+  username_global: string | null
+  avatar: string | null
+}
+
 export interface GuildChannel {
   id: string
   name: string
-  type: number
+  type: string
+  position: number
+  parent_id: string | null
+}
+
+export interface GuildChannelsResponse {
+  guild_id: string
+  guild_name: string
+  channels: GuildChannel[]
 }
 
 export interface OpenDmChannel {

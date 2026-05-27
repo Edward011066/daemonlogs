@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useDeferredValue, useState } from "react"
 import {
   Copy,
   Inbox,
@@ -26,6 +26,7 @@ import { AsyncButton } from "@/components/shared/AsyncButton"
 import { CopyButton } from "@/components/shared/CopyButton"
 import { ToolConfirmDialog } from "@/components/tools/ToolConfirmDialog"
 import { DiscordTokenResult } from "@/components/tools/DiscordTokenResult"
+import { useGuildChannels } from "@/hooks/useDiscordUtils"
 import {
   useCloseDm,
   useDeleteRelationships,
@@ -82,6 +83,13 @@ export function ToolsPage() {
   const [clearServerOpen, setClearServerOpen] = useState(false)
   const [clearServerGuildId, setClearServerGuildId] = useState("")
   const [clearServerIgnored, setClearServerIgnored] = useState("")
+  const deferredClearServerGuildId = useDeferredValue(clearServerGuildId.trim())
+  const clearServerLookupId =
+    clearServerOpen && /^[0-9]{17,20}$/.test(deferredClearServerGuildId)
+      ? deferredClearServerGuildId
+      : ""
+  const guildChannels = useGuildChannels(clearServerLookupId)
+  const guildChannelsError = guildChannels.error instanceof ApiError ? guildChannels.error : null
 
   // ── Validar token Discord ──
   const [discordTokenInput, setDiscordTokenInput] = useState("")
@@ -107,6 +115,18 @@ export function ToolsPage() {
     } catch (err) {
       if (err instanceof ApiError) showErrorToast(err)
     }
+  }
+
+  const toggleIgnoredChannel = (channelId: string) => {
+    const next = new Set(parseIds(clearServerIgnored))
+
+    if (next.has(channelId)) {
+      next.delete(channelId)
+    } else {
+      next.add(channelId)
+    }
+
+    setClearServerIgnored(Array.from(next).join("\n"))
   }
 
   const handleValidateDiscordToken = async () => {
@@ -641,7 +661,62 @@ export function ToolsPage() {
               placeholder="123456789012345678"
               className="h-8 font-mono text-xs"
             />
+            <p className="text-xs text-muted-foreground">
+              Ao informar um Guild ID válido, carregamos os canais para facilitar a seleção dos ignorados.
+            </p>
           </div>
+
+          {clearServerLookupId && guildChannels.isFetching && (
+            <div className="rounded-md border border-border bg-surface-2 p-3 text-xs text-muted-foreground">
+              Carregando canais do servidor...
+            </div>
+          )}
+
+          {guildChannels.data && (
+            <div className="space-y-2 rounded-md border border-border bg-surface p-3">
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-foreground">Canais de {guildChannels.data.guild_name}</p>
+                <p className="text-xs text-muted-foreground">
+                  Marque os canais que devem ser ignorados durante a limpeza.
+                </p>
+              </div>
+
+              <ScrollArea className="h-40 rounded-md border border-border bg-surface-2">
+                <div className="space-y-1 p-2">
+                  {guildChannels.data.channels.map((channel) => {
+                    const checked = parseIds(clearServerIgnored).includes(channel.id)
+
+                    return (
+                      <label
+                        key={channel.id}
+                        className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-background/70"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleIgnoredChannel(channel.id)}
+                          className="h-3.5 w-3.5 accent-accent"
+                        />
+                        <span className="min-w-0 flex-1 truncate text-xs text-foreground">
+                          {channel.name}
+                        </span>
+                        <span className="font-mono text-[10px] text-muted-foreground">
+                          {channel.id}
+                        </span>
+                      </label>
+                    )
+                  })}
+                </div>
+              </ScrollArea>
+            </div>
+          )}
+
+          {guildChannelsError && (
+            <div className="rounded-md border border-warning/20 bg-warning/10 p-3 text-xs text-warning">
+              {guildChannelsError.message}
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <Label className="text-xs">IDs de canais a ignorar (opcional)</Label>
             <p className="text-xs text-muted-foreground">Um ID por linha ou separados por vírgula.</p>

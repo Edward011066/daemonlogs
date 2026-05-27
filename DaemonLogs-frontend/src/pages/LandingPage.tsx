@@ -1,9 +1,11 @@
-﻿import { Link, useNavigate } from "react-router-dom"
+﻿import { useState } from "react"
+import { Link, useNavigate } from "react-router-dom"
 import {
   Activity,
   Eye,
   MessageSquareOff,
   Radio,
+  Server,
   Shield,
   Terminal,
   Users,
@@ -12,10 +14,13 @@ import {
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { ServersMarquee } from "@/components/shared/ServersMarquee"
 import { getAuthMode, getToken } from "@/lib/auth"
 import { setGuestMode } from "@/lib/guest"
 import { useTargetsAmount } from "@/hooks/useTargetsAmount"
+import { useCheckServerMonitoring } from "@/hooks/useServers"
+import { ApiError } from "@/lib/api"
 
 const FEATURES = [
   {
@@ -63,10 +68,27 @@ export function LandingPage() {
   const guestPrimaryText = isLocalAuth ? "Começar agora" : "Entrar com Discord"
   const navigate = useNavigate()
   const { data: targetsData } = useTargetsAmount()
+  const [serverId, setServerId] = useState("")
+  const checkServer = useCheckServerMonitoring()
+
+  const trimmedServerId = serverId.trim()
+  const hasValidServerId = /^[0-9]{17,20}$/.test(trimmedServerId)
+  const serverLookupError = checkServer.error instanceof ApiError ? checkServer.error : null
 
   const handleExplore = () => {
     setGuestMode()
     navigate("/dashboard")
+  }
+
+  const handleCheckServer = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (!hasValidServerId) return
+
+    try {
+      await checkServer.mutateAsync(trimmedServerId)
+    } catch {
+      // Estado de erro exibido inline para a consulta pública.
+    }
   }
 
   return (
@@ -153,14 +175,78 @@ export function LandingPage() {
               <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
             </span>
             <span className="text-sm text-foreground">
-              Usuários da DaemonLogs estão monitorando nesse momento {" "}
+             Usuários da DaemonLogs estão monitorando {" "}
               <span className="font-bold text-accent">
                 {targetsData.total.toLocaleString("pt-BR")}
               </span>{" "}
-              contas agora. Quer monitorar também? Faça login e coloque o id da conta que deseja rastrear.
+              contas agora. Quer monitorar também? Faça login e insira o ID da conta.
             </span>
           </div>
         )}
+
+        <div className="mt-8 w-full max-w-3xl rounded-2xl border border-border/60 bg-surface/70 p-4 text-left shadow-sm sm:p-5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10">
+              <Server className="h-5 w-5 text-accent" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-foreground">Seu servidor já apareceu na rede?</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Cole o Guild ID e descubra se esse servidor já foi encontrado pelas contas de monitoramento ativas.
+              </p>
+            </div>
+          </div>
+
+          <form className="mt-4 flex flex-col gap-3 sm:flex-row" onSubmit={handleCheckServer}>
+            <Input
+              value={serverId}
+              onChange={(e) => {
+                setServerId(e.target.value)
+                if (checkServer.isSuccess || checkServer.isError) checkServer.reset()
+              }}
+              placeholder="Cole o Guild ID do servidor"
+              className="h-11 flex-1 border-border bg-surface-2 font-mono text-sm"
+            />
+            <Button type="submit" size="lg" disabled={!hasValidServerId || checkServer.isPending}>
+              {checkServer.isPending ? "Verificando..." : "Verificar servidor"}
+            </Button>
+          </form>
+
+          <p className="mt-2 text-xs text-muted-foreground">
+            Aceita apenas Snowflakes do Discord com 17 a 20 dígitos.
+          </p>
+
+          {checkServer.data?.monitored && (
+            <div className="mt-4 rounded-xl border border-success/20 bg-success/10 p-3">
+              <p className="text-sm font-semibold text-success">Sim, este servidor está sendo monitorado.</p>
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                <span className="text-foreground">{checkServer.data.server.server_name}</span>
+                <span className="font-mono">{checkServer.data.server.guild_id}</span>
+                <span>
+                  visto em {new Date(checkServer.data.server.created_at).toLocaleDateString("pt-BR")}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {checkServer.data && !checkServer.data.monitored && (
+            <div className="mt-4 rounded-xl border border-warning/20 bg-warning/10 p-3 text-sm text-warning">
+              Nao encontramos esse servidor no monitoramento atual.
+            </div>
+          )}
+
+          {serverLookupError?.status === 404 && (
+            <div className="mt-4 rounded-xl border border-warning/20 bg-warning/10 p-3 text-sm text-warning">
+              Ainda nao encontramos esse servidor na rede monitorada.
+            </div>
+          )}
+
+          {serverLookupError && serverLookupError.status !== 404 && (
+            <div className="mt-4 rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+              {serverLookupError.message}
+            </div>
+          )}
+        </div>
 
         <ServersMarquee
           className="mt-16 w-full text-left"
