@@ -39,7 +39,7 @@ export interface Referral {
 export interface MonitoringAccount {
   id: number
   is_valid: boolean
-  username?: string
+  username: string
   created_at: string
 }
 

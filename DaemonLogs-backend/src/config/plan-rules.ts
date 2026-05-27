@@ -1,6 +1,6 @@
 export const PLAN_RULES = {
   freemium: {
-    max_targets: 3,
+    max_targets: 2,
     cooldown_hours: 24,
     requires_active_monitoring: true,
   },
@@ -11,8 +11,8 @@ export const PLAN_RULES = {
   },
   server_count_premium: {
     enabled: true,
-    min_unique_servers: 10,
-    premium_days: 30,
+    min_unique_servers: 3,
+    premium_days: 7,
   },
   my_token_cooldown_hours: Number(process.env.MY_TOKEN_COOLDOWN_HOURS ?? 24),
   clear_chat: {

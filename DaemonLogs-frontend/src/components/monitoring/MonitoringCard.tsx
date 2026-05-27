@@ -45,7 +45,7 @@ export function MonitoringCard({ account }: MonitoringCardProps) {
           <div>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
               <p className="text-sm font-medium text-foreground">
-                {account.username ?? `Conta #${account.id}`}
+                {account.username}
               </p>
               <span className="text-xs text-muted-foreground">
                 {account.is_valid ? "Token válido" : "Token inválido"}
