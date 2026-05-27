@@ -531,7 +531,7 @@ export function ToolsPage() {
       <div>
         <h2 className="mb-3 text-sm font-medium text-foreground">Utilitários</h2>
         <div className="grid gap-4 xl:grid-cols-2">
-          <Card className="bg-surface">
+          <Card className="bg-surface" data-allow-guest-interaction="true">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-3">
                 <KeyRound className="h-5 w-5 text-muted-foreground" />
