@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog"
 import { AsyncButton } from "@/components/shared/AsyncButton"
 import { CopyButton } from "@/components/shared/CopyButton"
+import { ToolCard } from "@/components/tools/ToolCard"
 import { ToolConfirmDialog } from "@/components/tools/ToolConfirmDialog"
 import { DiscordTokenResult } from "@/components/tools/DiscordTokenResult"
 import { useGuildChannels } from "@/hooks/useDiscordUtils"
@@ -160,80 +161,40 @@ export function ToolsPage() {
       <div>
         <h2 className="mb-3 text-sm font-medium text-foreground">Automações de conta</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card className="bg-surface">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-3">
-                <MessageSquareOff className="h-5 w-5 text-muted-foreground" />
-                <CardTitle className="text-sm font-medium">Fechar DMs</CardTitle>
-              </div>
-              <CardDescription className="text-xs">
-                Fecha todas as conversas diretas abertas. Você pode ignorar DMs específicas.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button size="sm" className="w-full" onClick={() => setCloseDmOpen(true)}>
-                Executar
-              </Button>
-            </CardContent>
-          </Card>
+          <ToolCard
+            title="Fechar DMs"
+            description="Fecha todas as conversas diretas abertas. Você pode ignorar DMs específicas."
+            icon={MessageSquareOff}
+            isPending={false}
+            onRun={() => setCloseDmOpen(true)}
+          />
 
-          <Card className="bg-surface">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-3">
-                <LogOut className="h-5 w-5 text-muted-foreground" />
-                <CardTitle className="text-sm font-medium">Sair de servidores</CardTitle>
-              </div>
-              <CardDescription className="text-xs">
-                Sai de todos os servidores que você participa. Você pode ignorar servidores
-                específicos.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button
-                size="sm"
-                variant="destructive"
-                className="w-full"
-                onClick={() => setLeaveServerOpen(true)}
-              >
-                Executar
-              </Button>
-            </CardContent>
-          </Card>
+          <ToolCard
+            title="Sair de servidores"
+            description="Sai de todos os servidores que você participa. Você pode ignorar servidores específicos."
+            icon={LogOut}
+            destructive
+            isPending={false}
+            onRun={() => setLeaveServerOpen(true)}
+          />
 
-          <Card className="bg-surface">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-3">
-                <Trash2 className="h-5 w-5 text-muted-foreground" />
-                <CardTitle className="text-sm font-medium">Remover amizades</CardTitle>
-              </div>
-              <CardDescription className="text-xs">
-                Remove todas as relações (amigos, bloqueados). Você pode ignorar usuários
-                específicos.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button
-                size="sm"
-                variant="destructive"
-                className="w-full"
-                onClick={() => setDeleteRelOpen(true)}
-              >
-                Executar
-              </Button>
-            </CardContent>
-          </Card>
+          <ToolCard
+            title="Remover amizades"
+            description="Remove todas as relações (amigos, bloqueados). Você pode ignorar usuários específicos."
+            icon={Trash2}
+            destructive
+            isPending={false}
+            onRun={() => setDeleteRelOpen(true)}
+          />
 
-          <Card className="bg-surface">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-3">
-                <Inbox className="h-5 w-5 text-muted-foreground" />
-                <CardTitle className="text-sm font-medium">Listar DMs abertas</CardTitle>
-              </div>
-              <CardDescription className="text-xs">
-                Consulta as conversas diretas abertas usando o token configurado.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
+          <ToolCard
+            title="Listar DMs abertas"
+            description="Consulta as conversas diretas abertas usando o token configurado."
+            icon={Inbox}
+            actionLabel="Listar DMs"
+            isPending={listDms.isPending}
+            onRun={handleListDms}
+          >
               <label className="flex cursor-pointer items-center gap-2">
                 <input
                   type="checkbox"
@@ -243,16 +204,7 @@ export function ToolsPage() {
                 />
                 <span className="text-xs text-muted-foreground">Incluir ID do canal</span>
               </label>
-              <AsyncButton
-                size="sm"
-                className="w-full"
-                loading={listDms.isPending}
-                onClick={handleListDms}
-              >
-                Listar DMs
-              </AsyncButton>
-            </CardContent>
-          </Card>
+          </ToolCard>
         </div>
       </div>
 
@@ -262,57 +214,29 @@ export function ToolsPage() {
       <div>
         <h2 className="mb-3 text-sm font-medium text-foreground">Limpar mensagens</h2>
         <div className="grid gap-4 sm:grid-cols-3">
-          <Card className="bg-surface">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-3">
-                <MessageCircleOff className="h-5 w-5 text-muted-foreground" />
-                <CardTitle className="text-sm font-medium">Limpar DMs</CardTitle>
-              </div>
-              <CardDescription className="text-xs">
-                Apaga suas mensagens de todas as DMs abertas. Você pode ignorar DMs específicas.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button size="sm" className="w-full" onClick={() => setClearDmsOpen(true)}>
-                Executar
-              </Button>
-            </CardContent>
-          </Card>
+          <ToolCard
+            title="Limpar DMs"
+            description="Apaga suas mensagens de todas as DMs abertas. Você pode ignorar DMs específicas."
+            icon={MessageCircleOff}
+            isPending={false}
+            onRun={() => setClearDmsOpen(true)}
+          />
 
-          <Card className="bg-surface">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-3">
-                <MessageCircleOff className="h-5 w-5 text-muted-foreground" />
-                <CardTitle className="text-sm font-medium">Limpar canal</CardTitle>
-              </div>
-              <CardDescription className="text-xs">
-                Apaga suas mensagens de um canal específico pelo ID.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button size="sm" className="w-full" onClick={() => setClearChannelOpen(true)}>
-                Executar
-              </Button>
-            </CardContent>
-          </Card>
+          <ToolCard
+            title="Limpar canal"
+            description="Apaga suas mensagens de um canal específico pelo ID."
+            icon={MessageCircleOff}
+            isPending={false}
+            onRun={() => setClearChannelOpen(true)}
+          />
 
-          <Card className="bg-surface">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-3">
-                <Server className="h-5 w-5 text-muted-foreground" />
-                <CardTitle className="text-sm font-medium">Limpar servidor</CardTitle>
-              </div>
-              <CardDescription className="text-xs">
-                Apaga suas mensagens em todos os canais de um servidor. Você pode ignorar canais
-                específicos.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button size="sm" className="w-full" onClick={() => setClearServerOpen(true)}>
-                Executar
-              </Button>
-            </CardContent>
-          </Card>
+          <ToolCard
+            title="Limpar servidor"
+            description="Apaga suas mensagens em todos os canais de um servidor. Você pode ignorar canais específicos."
+            icon={Server}
+            isPending={false}
+            onRun={() => setClearServerOpen(true)}
+          />
         </div>
       </div>
 

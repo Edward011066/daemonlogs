@@ -1,6 +1,7 @@
 import { clearToken, getToken } from "./auth"
 import { isGuestMode } from "./guest"
 import { resolveApiErrorCopy, type ApiErrorRouteHint } from "./api-error-copy"
+import { resolveDemoApiResponse } from "./demo-api"
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000"
 
@@ -34,6 +35,11 @@ export async function apiFetch<T = unknown>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
+  if (isGuestMode()) {
+    const demoResponse = resolveDemoApiResponse<T>(path, options)
+    if (demoResponse !== undefined) return demoResponse
+  }
+
   const token = getToken()
 
   const response = await fetch(`${BASE_URL}${path}`, {
