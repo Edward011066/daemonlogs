@@ -153,11 +153,11 @@ export function LandingPage() {
               <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
             </span>
             <span className="text-sm text-foreground">
-              Monitoramos atualmente{" "}
+              Usuários da DaemonLogs estão monitorando nesse momento {" "}
               <span className="font-bold text-accent">
                 {targetsData.total.toLocaleString("pt-BR")}
               </span>{" "}
-              usuários agora
+              contas agora. Quer monitorar também? Faça login e coloque o id da conta que deseja rastrear.
             </span>
           </div>
         )}
