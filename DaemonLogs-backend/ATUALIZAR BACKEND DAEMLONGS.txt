@@ -1,0 +1,16 @@
+BACKEND:
+1. O backend deve filtrar os canais para permitir o monitoramento apenas em servidores (guild) não capturar eventos de DM.
+2. Na tag servidores criar um novo endpoint, POST para /servers. Esse endpoint será utilizado para verificar se um guild_ID está na lista de servidores do banco de dados. Ou seja, será utilizado para os usuários saberem se o servidor em especifico é monitorado.
+3. O endpoint POST /monitoring quando o is_valid é True ele deve também resolver e obter o username da conta do token e retornar na resposta.
+4. Atualmente o sistema detecta quando um usuário envia mensagem e armazena conteudo, id, etc... Correto? quando uma mensagem for apagada o sistema deve consultar se o ID dela está no banco de dados (para descobrir o conteudo que foi apagado de fato) e então exibir o envento de mensagem apagada informando qual conteudo foi apagado, pois hoje como isso não está sendo feito dessa forma, está exibindo conteudo -> "Conteúdo indisponível"
+5. O backend deve filtrar os canais para permitir o monitoramento apenas em servidores (guild) não capturar eventos de DM.
+6. Ver a possibilidade de usar alguma lógica parecida com a descrita no item 4 e tente aplicar também na lógica de quando um usuário troca de canal. Exibindo os usuários que ficaram no canal que ele saiu e os novos que estão no que ele entrou. Apenas se possível, não tentar inventar coisas que não existem.
+7. Na tag Contas Alvo adicionar um endpoint GET targets-amount publico para listar a quantidade total de usuários alvos em todo banco de dados.
+
+
+FRONTEND:
+1. em /events deve informar o conteudo da mensagem. Todas as informações, sendo elas as principais: Conteudo, servidor, canal, outras informações mais técnicas como ID e etc em um {} para mais informações.
+2. criar uma "versão mobile" para telas de 768px ~ 375px. Pois elementos como //*[@id="root"]/div/aside é totalmente incompatível com essas telas. Portanto refatore uma versão exclusiva para mobiles (telas pequenas de px pequeno) utilizando boas práticas como apps e sites profissionais tipo stripe, bancos, etc..
+3. Atualizar página principal (/) para mlhorar e adcionar textos como "Monitoramos atualmente {targets-amount} usuários" chamando GET targest-amount. Remover o texto e a quantidade "6 Tipos de evento", substituir termos como "5+ Ferramentas de automação" para "Várias ferramentas de automação, clearchat(cl), fechar dms, desfazer amizades, monitoramentos e muito mais.", remover a informação "~1s Latência de coleta". Melhore os textos das ferramentas e verifique se todas estão lá. Coisas mais agressivas como "Saiba em qual servidor e canal, mensagens enviadas, deletadas em diferentes canais e servidores dos usuários que você desejar.  Cada movimento registrado." ao invés de "Saiba quando um usuário entra ou sai de canal de voz, edita ou apaga mensagens, e quando te menciona. Cada movimento registrado.". 
+4. Melhore o UI da tela principal para ser mais atraente aos olhos. Modifique as instruções de frontend e deixe com cores mais elegantes, sem fugir muito da pegada do discord. Porém com UI mais bonita, porém não diferente demais.
+
