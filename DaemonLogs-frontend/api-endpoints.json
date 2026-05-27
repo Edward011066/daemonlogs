@@ -18,64 +18,20 @@
     }
   },
   "paths": {
-    "/auth/register": {
-      "post": {
-        "summary": "Registrar novo usuário",
+    "/auth/discord": {
+      "get": {
+        "summary": "Iniciar autenticação Discord OAuth2",
         "tags": [
           "Auth"
         ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "username",
-                  "password",
-                  "email"
-                ],
-                "properties": {
-                  "username": {
-                    "type": "string",
-                    "minLength": 3,
-                    "maxLength": 50
-                  },
-                  "password": {
-                    "type": "string",
-                    "minLength": 6
-                  },
-                  "email": {
-                    "type": "string",
-                    "format": "email"
-                  },
-                  "referral_code": {
-                    "type": "string",
-                    "description": "Código de indicação de outro usuário (opcional)"
-                  }
-                }
-              }
-            }
-          }
-        },
+        "description": "Redireciona para a página de autorização do Discord.",
         "responses": {
-          "201": {
-            "description": "Default Response",
+          "302": {
+            "description": "Redirect para Discord",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "number"
-                    },
-                    "username": {
-                      "type": "string"
-                    },
-                    "email": {
-                      "type": "string"
-                    }
-                  }
+                  "description": "Redirect para Discord"
                 }
               }
             }
@@ -83,322 +39,38 @@
         }
       }
     },
-    "/auth/activate": {
-      "post": {
-        "summary": "Ativar conta via código recebido por email",
+    "/auth/discord/callback": {
+      "get": {
+        "summary": "Callback Discord OAuth2",
         "tags": [
           "Auth"
         ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "code"
-                ],
-                "properties": {
-                  "code": {
-                    "type": "string",
-                    "minLength": 10
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/auth/resend-activation": {
-      "post": {
-        "summary": "Reenviar email de ativação",
-        "tags": [
-          "Auth"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "email"
-                ],
-                "properties": {
-                  "email": {
-                    "type": "string",
-                    "format": "email"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/auth/login": {
-      "post": {
-        "summary": "Login",
-        "tags": [
-          "Auth"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "username",
-                  "password"
-                ],
-                "properties": {
-                  "username": {
-                    "type": "string",
-                    "minLength": 3,
-                    "maxLength": 50
-                  },
-                  "password": {
-                    "type": "string",
-                    "minLength": 6
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "token": {
-                      "type": "string"
-                    },
-                    "usuario": {
-                      "type": "object",
-                      "properties": {
-                        "id": {
-                          "type": "number"
-                        },
-                        "username": {
-                          "type": "string"
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/auth/logout": {
-      "post": {
-        "summary": "Logout",
-        "tags": [
-          "Auth"
-        ],
-        "security": [
+        "description": "Recebe code+state do Discord, valida, cria/atualiza usuário e redireciona ao frontend com JWT.",
+        "parameters": [
           {
-            "bearerAuth": []
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "code",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "state",
+            "required": true
           }
         ],
         "responses": {
-          "200": {
-            "description": "Default Response",
+          "302": {
+            "description": "Redirect para frontend com ?token=JWT",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/auth/forgot-password": {
-      "post": {
-        "summary": "Solicitar redefinição de senha",
-        "tags": [
-          "Auth"
-        ],
-        "description": "Envia um código de 6 dígitos para o email cadastrado. Expira em 15 minutos.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "email"
-                ],
-                "properties": {
-                  "email": {
-                    "type": "string",
-                    "format": "email"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/auth/verify-reset-code": {
-      "post": {
-        "summary": "Verificar código de redefinição de senha",
-        "tags": [
-          "Auth"
-        ],
-        "description": "Valida o código de 6 dígitos antes de exibir o formulário de nova senha.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "code"
-                ],
-                "properties": {
-                  "code": {
-                    "type": "string",
-                    "minLength": 6,
-                    "maxLength": 6,
-                    "pattern": "^[0-9]{6}$"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/auth/reset-password": {
-      "post": {
-        "summary": "Redefinir senha",
-        "tags": [
-          "Auth"
-        ],
-        "description": "Define uma nova senha utilizando o código de redefinição enviado por email.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "code",
-                  "new_password"
-                ],
-                "properties": {
-                  "code": {
-                    "type": "string",
-                    "minLength": 6,
-                    "maxLength": 6,
-                    "pattern": "^[0-9]{6}$"
-                  },
-                  "new_password": {
-                    "type": "string",
-                    "minLength": 6
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string"
-                    }
-                  }
+                  "description": "Redirect para frontend com ?token=JWT"
                 }
               }
             }
@@ -432,6 +104,17 @@
                       },
                       "is_valid": {
                         "type": "boolean"
+                      },
+                      "username": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "Username da conta Discord associada ao token"
                       },
                       "created_at": {
                         "type": "string"
