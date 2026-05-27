@@ -1,4 +1,4 @@
-import type { DiscordPublicUser, GuildChannelsResponse, ServerLookupResponse } from "@/types"
+import type { DiscordPublicUser, DiscordUserInfo, GuildChannelsResponse, ServerLookupResponse } from "@/types"
 import {
   demoDiscordUsers,
   demoDmChannels,
@@ -9,6 +9,7 @@ import {
   demoMyToken,
   demoPayments,
   demoReferrals,
+  demoDiscordTokenValidation,
   demoServerLookupFallback,
   demoServers,
   demoTargets,
@@ -114,6 +115,17 @@ function resolveGuildChannels(pathname: string): GuildChannelsResponse {
   )
 }
 
+function resolveValidateDiscordToken(options: RequestInit): DiscordUserInfo {
+  const body = parseJsonBody(options)
+  const token = typeof body.token === "string" ? body.token.trim() : ""
+
+  if (!token || /invalid|expirado|expired/i.test(token)) {
+    return cloneDemoValue({ valid: false, user: null })
+  }
+
+  return cloneDemoValue(demoDiscordTokenValidation)
+}
+
 export function resolveDemoApiResponse<T>(
   path: string,
   options: RequestInit = {},
@@ -169,6 +181,10 @@ export function resolveDemoApiResponse<T>(
 
   if (method === "POST" && pathname === "/servers") {
     return resolveServerLookup(options) as T
+  }
+
+  if (method === "POST" && pathname === "/utils/validate-discord-token") {
+    return resolveValidateDiscordToken(options) as T
   }
 
   return undefined

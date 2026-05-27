@@ -1,5 +1,6 @@
 import type {
   DiscordEvent,
+  DiscordUserInfo,
   DiscordPublicUser,
   DiscordServer,
   GuildChannelsResponse,
@@ -302,6 +303,107 @@ export const demoPayments: PaymentStatusResponse[] = [
 
 export const demoToolsStatus: ToolsStatus = {
   active: false,
+}
+
+export const demoDiscordTokenValidation: DiscordUserInfo = {
+  valid: true,
+  user: {
+    id: demoMyToken.discord_user?.id ?? "900000000000000001",
+    username: demoMyToken.discord_user?.username ?? "scout_hub",
+    discriminator: "0",
+    global_name: "Scout Hub",
+    avatar: demoMyToken.discord_user?.avatar ?? null,
+    email: "scout.hub@daemonlogs.local",
+    phone: "+55 11 99999-0001",
+    mfa_enabled: true,
+    guild_count: 6,
+    guilds: demoServers.items.slice(0, 6).map((server) => ({
+      id: server.guild_id,
+      name: server.server_name,
+    })),
+    friend_count: 4,
+    friends: [
+      {
+        id: "710001000100010001",
+        username: "kaueops",
+        global_name: "Kau",
+        avatar: null,
+        discriminator: "0",
+      },
+      {
+        id: "710001000100010002",
+        username: "mari.signal",
+        global_name: "Mari Signal",
+        avatar: null,
+        discriminator: "0",
+      },
+      {
+        id: "710001000100010003",
+        username: "atlasgrid",
+        global_name: null,
+        avatar: null,
+        discriminator: "1482",
+      },
+      {
+        id: "710001000100010004",
+        username: "noxrelay",
+        global_name: "Nox Relay",
+        avatar: null,
+        discriminator: "0",
+      },
+    ],
+    bio: "Conta demo para validar o fluxo utilitário do frontend, com dados suficientes para preencher todas as abas do resumo.",
+    authenticator_types: [1, 2],
+    age_verification_status: 1,
+    user_sessions: [
+      {
+        id_hash: "sess_demo_001a4f9c",
+        approx_last_used_time: hoursAgo(1),
+        client_info: {
+          os: "Windows",
+          platform: "Desktop",
+          location: "Sao Paulo, BR",
+        },
+      },
+      {
+        id_hash: "sess_demo_002bf82d",
+        approx_last_used_time: daysAgo(1),
+        client_info: {
+          os: "Android",
+          platform: "Mobile",
+          location: "Curitiba, BR",
+        },
+      },
+    ],
+    payment_sources: [
+      {
+        id: "pay_demo_card_001",
+        type: 1,
+        invalid: false,
+        flags: 0,
+        deleted_at: null,
+        brand: "Visa",
+        last_4: "4242",
+        expires_month: 12,
+        expires_year: 2028,
+        email: "billing@daemonlogs.local",
+        billing_address: { name: "Scout Hub", country: "BR" },
+        country: "BR",
+        payment_gateway: 1,
+        payment_gateway_source_id: "src_demo_visa_001",
+        default: true,
+      },
+    ],
+    email_settings: {
+      categories: {
+        communication: true,
+        social: true,
+        recommendations_and_events: false,
+        tips: true,
+      },
+      initialized: true,
+    },
+  },
 }
 
 export const demoDiscordUsers: DiscordPublicUser[] = demoTargets.map((target) => ({
