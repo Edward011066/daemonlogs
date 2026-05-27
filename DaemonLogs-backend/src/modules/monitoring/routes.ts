@@ -25,6 +25,10 @@ export async function monitoringRoutes(fastify: FastifyInstance) {
             properties: {
               id: { type: 'number' },
               is_valid: { type: 'boolean' },
+              username: {
+                anyOf: [{ type: 'string' }, { type: 'null' }],
+                description: 'Username da conta Discord associada ao token',
+              },
               created_at: { type: 'string' },
             },
           },

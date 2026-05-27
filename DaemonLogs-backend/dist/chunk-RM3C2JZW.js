@@ -1,7 +1,6 @@
-// src/plugins/prisma.ts
-import { PrismaClient } from "@prisma/client";
-var prisma = new PrismaClient();
-var prisma_default = prisma;
+import {
+  prisma_default
+} from "./chunk-MV7YXRMU.js";
 
 // src/modules/auth/repository.ts
 async function findUsuarioByUsername(username) {
@@ -102,7 +101,6 @@ async function updateUserPassword(usuarioId, hashedPassword) {
 }
 
 export {
-  prisma_default,
   findUsuarioByUsername,
   findUsuarioByEmail,
   findUsuarioById,
@@ -127,4 +125,4 @@ export {
   deleteOldPasswordResetsForUser,
   updateUserPassword
 };
-//# sourceMappingURL=chunk-2TR5OHLJ.js.map
+//# sourceMappingURL=chunk-RM3C2JZW.js.map

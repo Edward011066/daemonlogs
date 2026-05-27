@@ -1,0 +1,1 @@
+{"version":3,"sources":["../src/plugins/prisma.ts"],"sourcesContent":["import { PrismaClient } from '@prisma/client'\r\n\r\nconst prisma = new PrismaClient()\r\n\r\nexport default prisma\r\n"],"mappings":";AAAA,SAAS,oBAAoB;AAE7B,IAAM,SAAS,IAAI,aAAa;AAEhC,IAAO,iBAAQ;","names":[]}

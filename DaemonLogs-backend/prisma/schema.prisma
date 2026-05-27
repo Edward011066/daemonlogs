@@ -40,6 +40,7 @@ model usuarios {
 model contas_monitoramento {
   id         Int        @id @default(autoincrement())
   token      String     @db.Text
+  username   String?    @db.VarChar(100)
   is_valid   Boolean    @default(false)
   usuario_id Int
   usuario    usuarios   @relation(fields: [usuario_id], references: [id], onDelete: Cascade)

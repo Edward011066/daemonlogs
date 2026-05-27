@@ -1,4 +1,18 @@
 import {
+  countActiveMonitoring,
+  createMonitoring,
+  deleteMonitoring,
+  findAllMonitoringByUser,
+  findAllValidTokens,
+  findMonitoringById,
+  findMonitoringTokenById,
+  updateMonitoringUsername,
+  updateMonitoringValidity,
+  validateToken,
+  validateTokenAndGetUsername,
+  validateTokenWithExtendedInfo
+} from "./chunk-A7PPCHXN.js";
+import {
   activateUsuario,
   createEmailVerification,
   createPasswordReset,
@@ -17,10 +31,12 @@ import {
   incrementReferralCount,
   markEmailVerificationUsed,
   markPasswordResetUsed,
-  prisma_default,
   updateUserPassword,
   upsertUsuarioByDiscordId
-} from "./chunk-2TR5OHLJ.js";
+} from "./chunk-RM3C2JZW.js";
+import {
+  prisma_default
+} from "./chunk-MV7YXRMU.js";
 
 // src/app.ts
 import Fastify from "fastify";
@@ -40,6 +56,363 @@ var AppError = class extends Error {
   code;
   meta;
 };
+
+// src/selfbot/client-manager.ts
+import { Client } from "discord.js-selfbot-v13";
+
+// src/selfbot/functions/target-utils.ts
+async function getTargetInternalId(discordUserId) {
+  const target = await prisma_default.contas_alvos.findFirst({
+    where: { discord_user_id: discordUserId },
+    select: { id: true }
+  });
+  return target?.id ?? null;
+}
+async function isTargetUser(discordUserId) {
+  const count = await prisma_default.contas_alvos.count({
+    where: { discord_user_id: discordUserId }
+  });
+  return count > 0;
+}
+
+// src/selfbot/functions/save-events.ts
+async function saveMessage(input) {
+  const contaAlvoId = await getTargetInternalId(input.discord_user_id);
+  if (!contaAlvoId) return;
+  await prisma_default.mensagens_salvas.upsert({
+    where: { message_id: input.message_id },
+    create: {
+      message_id: input.message_id,
+      conteudo: input.conteudo,
+      guild_id: input.guild_id,
+      guild_name: input.guild_name,
+      channel_id: input.channel_id,
+      channel_name: input.channel_name,
+      link_mensagem: input.link_mensagem,
+      conta_alvo_id: contaAlvoId
+    },
+    update: {}
+  });
+}
+async function findMessageContent(messageId) {
+  const msg = await prisma_default.mensagens_salvas.findUnique({
+    where: { message_id: messageId },
+    select: { conteudo: true }
+  });
+  return msg?.conteudo ?? null;
+}
+async function saveEvent(input) {
+  const contaAlvoId = await getTargetInternalId(input.discord_user_id);
+  if (!contaAlvoId) return;
+  await prisma_default.eventos_monitoramento.upsert({
+    where: { idempotency_key: input.idempotency_key },
+    create: {
+      tipo: input.tipo,
+      dados: input.dados,
+      idempotency_key: input.idempotency_key,
+      conta_alvo_id: contaAlvoId
+    },
+    update: {}
+  });
+}
+async function saveServer(guildId, guildName, contaMonitoramentoId) {
+  await prisma_default.servidores.upsert({
+    where: { guild_id_conta_monitoramento_id: { guild_id: guildId, conta_monitoramento_id: contaMonitoramentoId } },
+    create: { guild_id: guildId, server_name: guildName, conta_monitoramento_id: contaMonitoramentoId },
+    update: { server_name: guildName }
+  });
+}
+
+// src/selfbot/events/message-create.ts
+function registerMessageCreateEvent(client) {
+  client.on("messageCreate", async (message) => {
+    try {
+      if (!message.author || message.partial) return;
+      if (message.author.bot) return;
+      if (!message.guild) return;
+      const isTarget = await isTargetUser(message.author.id);
+      if (!isTarget) return;
+      const guildId = message.guild?.id;
+      const guildName = message.guild?.name;
+      const channelId = message.channel.id;
+      const channelName = "name" in message.channel ? message.channel.name : "DM";
+      const link = guildId ? `https://discord.com/channels/${guildId}/${channelId}/${message.id}` : void 0;
+      await saveMessage({
+        message_id: message.id,
+        conteudo: message.content,
+        guild_id: guildId,
+        guild_name: guildName,
+        channel_id: channelId,
+        channel_name: channelName,
+        link_mensagem: link,
+        discord_user_id: message.author.id
+      });
+      for (const mentioned of message.mentions.users.values()) {
+        const mentionedIsTarget = await isTargetUser(mentioned.id);
+        if (!mentionedIsTarget) continue;
+        const key = `${message.id}:MENTION:${mentioned.id}`;
+        await saveEvent({
+          tipo: "MENTION",
+          dados: {
+            quem_mencionou_id: message.author.id,
+            quem_mencionou_username: message.author.username,
+            message_id: message.id,
+            channel_id: channelId,
+            channel_name: channelName,
+            guild_id: guildId,
+            guild_name: guildName,
+            conteudo: message.content,
+            timestamp: (/* @__PURE__ */ new Date()).toISOString()
+          },
+          idempotency_key: key,
+          discord_user_id: mentioned.id
+        });
+      }
+    } catch (err) {
+      console.error("[messageCreate] Erro:", err);
+    }
+  });
+}
+
+// src/selfbot/events/message-update.ts
+function registerMessageUpdateEvent(client) {
+  client.on("messageUpdate", async (oldMessage, newMessage) => {
+    try {
+      const author = newMessage.author ?? oldMessage.author;
+      if (!author || author.bot) return;
+      if (!newMessage.id) return;
+      if (!newMessage.guild && !oldMessage.guild) return;
+      const isTarget = await isTargetUser(author.id);
+      if (!isTarget) return;
+      const conteudoAnterior = oldMessage.content ?? "[n\xE3o dispon\xEDvel no cache]";
+      const conteudoNovo = newMessage.content ?? "[n\xE3o dispon\xEDvel]";
+      if (conteudoAnterior === conteudoNovo) return;
+      const guildId = newMessage.guild?.id ?? oldMessage.guild?.id;
+      const guildName = newMessage.guild?.name ?? oldMessage.guild?.name;
+      const channelId = newMessage.channel?.id ?? oldMessage.channel?.id;
+      const channelName = newMessage.channel && "name" in newMessage.channel ? newMessage.channel.name : "DM";
+      const key = `${newMessage.id}:MESSAGE_EDIT:${Date.now()}`;
+      await saveEvent({
+        tipo: "MESSAGE_EDIT",
+        dados: {
+          message_id: newMessage.id,
+          channel_id: channelId,
+          channel_name: channelName,
+          guild_id: guildId,
+          guild_name: guildName,
+          conteudo_anterior: conteudoAnterior,
+          conteudo_novo: conteudoNovo,
+          timestamp: (/* @__PURE__ */ new Date()).toISOString()
+        },
+        idempotency_key: key,
+        discord_user_id: author.id
+      });
+    } catch (err) {
+      console.error("[messageUpdate] Erro:", err);
+    }
+  });
+}
+
+// src/selfbot/events/message-delete.ts
+function registerMessageDeleteEvent(client) {
+  client.on("messageDelete", async (message) => {
+    try {
+      if (!message.id) return;
+      const author = message.author;
+      if (!author || author.bot) return;
+      if (!message.guild) return;
+      const isTarget = await isTargetUser(author.id);
+      if (!isTarget) return;
+      const guildId = message.guild?.id;
+      const guildName = message.guild?.name;
+      const channelId = message.channel?.id;
+      const channelName = message.channel && "name" in message.channel ? message.channel.name : "DM";
+      const key = `${message.id}:MESSAGE_DELETE`;
+      let conteudo = message.content ?? null;
+      if (!conteudo) {
+        conteudo = await findMessageContent(message.id);
+      }
+      await saveEvent({
+        tipo: "MESSAGE_DELETE",
+        dados: {
+          message_id: message.id,
+          channel_id: channelId,
+          channel_name: channelName,
+          guild_id: guildId,
+          guild_name: guildName,
+          conteudo: conteudo ?? "Conte\xFAdo indispon\xEDvel",
+          timestamp: (/* @__PURE__ */ new Date()).toISOString()
+        },
+        idempotency_key: key,
+        discord_user_id: author.id
+      });
+    } catch (err) {
+      console.error("[messageDelete] Erro:", err);
+    }
+  });
+}
+
+// src/selfbot/events/voice-state-update.ts
+function getMembersInChannel(state) {
+  if (!state.channel) return [];
+  const channel = state.channel;
+  return channel.members.map((member) => ({
+    username: member.user.username,
+    discord_user_id: member.user.id
+  }));
+}
+function registerVoiceStateUpdateEvent(client) {
+  client.on("voiceStateUpdate", async (oldState, newState) => {
+    try {
+      const userId = newState.member?.user.id ?? oldState.member?.user.id;
+      if (!userId) return;
+      const isTarget = await isTargetUser(userId);
+      if (!isTarget) return;
+      const canalAnterior = oldState.channel;
+      const canalNovo = newState.channel;
+      const guildId = newState.guild.id;
+      const guildName = newState.guild.name;
+      const timestamp = (/* @__PURE__ */ new Date()).toISOString();
+      let tipo;
+      let key;
+      let dados;
+      if (!canalAnterior && canalNovo) {
+        tipo = "VOICE_JOIN";
+        key = `${userId}:VOICE_JOIN:${canalNovo.id}:${Date.now()}`;
+        dados = {
+          canal_novo_id: canalNovo.id,
+          canal_novo_nome: canalNovo.name,
+          guild_id: guildId,
+          guild_name: guildName,
+          usuarios_presentes: getMembersInChannel(newState),
+          timestamp
+        };
+      } else if (canalAnterior && !canalNovo) {
+        tipo = "VOICE_LEAVE";
+        key = `${userId}:VOICE_LEAVE:${canalAnterior.id}:${Date.now()}`;
+        dados = {
+          canal_anterior_id: canalAnterior.id,
+          canal_anterior_nome: canalAnterior.name,
+          guild_id: guildId,
+          guild_name: guildName,
+          usuarios_que_ficaram: getMembersInChannel(oldState),
+          timestamp
+        };
+      } else if (canalAnterior && canalNovo && canalAnterior.id !== canalNovo.id) {
+        tipo = "VOICE_SWITCH";
+        key = `${userId}:VOICE_SWITCH:${canalAnterior.id}:${canalNovo.id}:${Date.now()}`;
+        dados = {
+          canal_anterior_id: canalAnterior.id,
+          canal_anterior_nome: canalAnterior.name,
+          canal_novo_id: canalNovo.id,
+          canal_novo_nome: canalNovo.name,
+          guild_id: guildId,
+          guild_name: guildName,
+          usuarios_canal_anterior: getMembersInChannel(oldState),
+          usuarios_canal_novo: getMembersInChannel(newState),
+          timestamp
+        };
+      } else {
+        return;
+      }
+      await saveEvent({ tipo, dados, idempotency_key: key, discord_user_id: userId });
+    } catch (err) {
+      console.error("[voiceStateUpdate] Erro:", err);
+    }
+  });
+}
+
+// src/selfbot/events/index.ts
+function registerAllEvents(client) {
+  registerMessageCreateEvent(client);
+  registerMessageUpdateEvent(client);
+  registerMessageDeleteEvent(client);
+  registerVoiceStateUpdateEvent(client);
+}
+
+// src/selfbot/events/guild-sync.ts
+function registerGuildSyncEvents(client, contaMonitoramentoId) {
+  client.on("ready", async () => {
+    const guilds = client.guilds.cache.values();
+    for (const guild of guilds) {
+      try {
+        await saveServer(guild.id, guild.name, contaMonitoramentoId);
+      } catch (err) {
+        console.error(`[GuildSync] Erro ao salvar servidor ${guild.id}:`, err);
+      }
+    }
+    console.log(
+      `[GuildSync] ${client.guilds.cache.size} servidor(es) sincronizado(s) para conta #${contaMonitoramentoId}`
+    );
+  });
+  client.on("guildCreate", async (guild) => {
+    try {
+      await saveServer(guild.id, guild.name, contaMonitoramentoId);
+      console.log(`[GuildSync] Novo servidor salvo: ${guild.name} (${guild.id})`);
+    } catch (err) {
+      console.error(`[GuildSync] Erro ao salvar novo servidor ${guild.id}:`, err);
+    }
+  });
+  client.on("guildUpdate", async (_old, newGuild) => {
+    try {
+      await saveServer(newGuild.id, newGuild.name, contaMonitoramentoId);
+    } catch (err) {
+      console.error(`[GuildSync] Erro ao atualizar servidor ${newGuild.id}:`, err);
+    }
+  });
+}
+
+// src/selfbot/client-manager.ts
+var clients = /* @__PURE__ */ new Map();
+function getClient(token) {
+  return clients.get(token);
+}
+function getAllClients() {
+  return clients;
+}
+async function createClient(token, contaMonitoramentoId) {
+  if (clients.has(token)) return clients.get(token);
+  const client = new Client({
+    checkUpdate: false,
+    partials: ["MESSAGE", "CHANNEL", "GUILD_MEMBER", "USER", "REACTION"]
+  });
+  client.on("error", (err) => {
+    console.error(`[ClientManager] Erro no cliente ${token.slice(0, 10)}...:`, err.message);
+  });
+  registerAllEvents(client);
+  let monitoringId = contaMonitoramentoId;
+  if (!monitoringId) {
+    const conta = await prisma_default.contas_monitoramento.findFirst({
+      where: { token },
+      select: { id: true }
+    });
+    monitoringId = conta?.id;
+  }
+  if (monitoringId) {
+    registerGuildSyncEvents(client, monitoringId);
+  }
+  await client.login(token);
+  clients.set(token, client);
+  console.log(`[ClientManager] Cliente conectado: ${client.user?.tag}`);
+  return client;
+}
+async function destroyClient(token) {
+  const client = clients.get(token);
+  if (client) {
+    client.destroy();
+    clients.delete(token);
+    console.log(`[ClientManager] Cliente desconectado: ${token.slice(0, 10)}...`);
+  }
+}
+async function startAllValidClients(tokens) {
+  for (const { id, token } of tokens) {
+    try {
+      await createClient(token, id);
+    } catch (err) {
+      console.error(`[ClientManager] Falha ao conectar token ${token.slice(0, 10)}...:`, err);
+    }
+  }
+}
 
 // src/plugins/swagger.ts
 import fp from "fastify-plugin";
@@ -366,7 +739,7 @@ async function activateAccountService(code) {
   if (verification.expires_at < /* @__PURE__ */ new Date()) throw new AppError(410, "CODE_EXPIRED", "C\xF3digo de ativa\xE7\xE3o expirado");
   await markEmailVerificationUsed(verification.id);
   await activateUsuario(verification.usuario_id);
-  const user = await import("./repository-QVEQZSGM.js").then((r) => r.findUsuarioById(verification.usuario_id));
+  const user = await import("./repository-TS6DV3HY.js").then((r) => r.findUsuarioById(verification.usuario_id));
   if (user?.referred_by_id) {
     await processReferral(user.referred_by_id);
   }
@@ -819,442 +1192,10 @@ async function authRoutes(fastify) {
   });
 }
 
-// src/selfbot/functions/validate-token.ts
-import { Client } from "discord.js-selfbot-v13";
-async function validateToken(token) {
-  const cleanToken = token.trim();
-  if (cleanToken.startsWith("Bot ") || cleanToken.startsWith("Bearer ")) {
-    return false;
-  }
-  const client = new Client({ checkUpdate: false, partials: ["MESSAGE", "CHANNEL", "USER"] });
-  return new Promise((resolve) => {
-    const timeout = setTimeout(() => {
-      client.destroy();
-      resolve(false);
-    }, 15e3);
-    client.on("ready", () => {
-      clearTimeout(timeout);
-      client.destroy();
-      resolve(true);
-    });
-    client.on("error", () => {
-      clearTimeout(timeout);
-      client.destroy();
-      resolve(false);
-    });
-    client.login(cleanToken).catch(() => {
-      clearTimeout(timeout);
-      client.destroy();
-      resolve(false);
-    });
-  });
-}
-async function validateTokenWithUserInfo(token) {
-  const cleanToken = token.trim();
-  if (cleanToken.startsWith("Bot ") || cleanToken.startsWith("Bearer ")) {
-    return { valid: false };
-  }
-  const client = new Client({ checkUpdate: false, partials: ["MESSAGE", "CHANNEL", "USER"] });
-  return new Promise((resolve) => {
-    const timeout = setTimeout(() => {
-      client.destroy();
-      resolve({ valid: false });
-    }, 15e3);
-    client.on("ready", () => {
-      clearTimeout(timeout);
-      const u = client.user;
-      const guilds = [...client.guilds.cache.values()].map((g) => ({ id: g.id, name: g.name }));
-      const relationshipsCache = client.relationships?.cache;
-      const friends = [];
-      if (relationshipsCache) {
-        for (const [, rel] of relationshipsCache) {
-          if (rel.type !== 1) continue;
-          const fu = rel.user ?? rel;
-          friends.push({
-            id: String(fu.id ?? ""),
-            username: fu.username ?? "",
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            global_name: fu.globalName ?? null,
-            avatar: fu.avatar ?? null,
-            discriminator: fu.discriminator ?? "0"
-          });
-        }
-      }
-      const info = {
-        id: u.id,
-        username: u.username,
-        discriminator: u.discriminator,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        global_name: u.globalName ?? null,
-        avatar: u.avatar,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        email: u.email ?? null,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        phone: u.phone ?? null,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        mfa_enabled: u.mfaEnabled ?? false,
-        guilds,
-        guild_count: guilds.length,
-        friends,
-        friend_count: friends.length
-      };
-      client.destroy();
-      resolve({ valid: true, user: info });
-    });
-    client.on("error", () => {
-      clearTimeout(timeout);
-      client.destroy();
-      resolve({ valid: false });
-    });
-    client.login(cleanToken).catch(() => {
-      clearTimeout(timeout);
-      client.destroy();
-      resolve({ valid: false });
-    });
-  });
-}
-
-// src/selfbot/client-manager.ts
-import { Client as Client2 } from "discord.js-selfbot-v13";
-
-// src/selfbot/functions/target-utils.ts
-async function getTargetInternalId(discordUserId) {
-  const target = await prisma_default.contas_alvos.findFirst({
-    where: { discord_user_id: discordUserId },
-    select: { id: true }
-  });
-  return target?.id ?? null;
-}
-async function isTargetUser(discordUserId) {
-  const count = await prisma_default.contas_alvos.count({
-    where: { discord_user_id: discordUserId }
-  });
-  return count > 0;
-}
-
-// src/selfbot/functions/save-events.ts
-async function saveMessage(input) {
-  const contaAlvoId = await getTargetInternalId(input.discord_user_id);
-  if (!contaAlvoId) return;
-  await prisma_default.mensagens_salvas.upsert({
-    where: { message_id: input.message_id },
-    create: {
-      message_id: input.message_id,
-      conteudo: input.conteudo,
-      guild_id: input.guild_id,
-      guild_name: input.guild_name,
-      channel_id: input.channel_id,
-      channel_name: input.channel_name,
-      link_mensagem: input.link_mensagem,
-      conta_alvo_id: contaAlvoId
-    },
-    update: {}
-  });
-}
-async function saveEvent(input) {
-  const contaAlvoId = await getTargetInternalId(input.discord_user_id);
-  if (!contaAlvoId) return;
-  await prisma_default.eventos_monitoramento.upsert({
-    where: { idempotency_key: input.idempotency_key },
-    create: {
-      tipo: input.tipo,
-      dados: input.dados,
-      idempotency_key: input.idempotency_key,
-      conta_alvo_id: contaAlvoId
-    },
-    update: {}
-  });
-}
-async function saveServer(guildId, guildName, contaMonitoramentoId) {
-  await prisma_default.servidores.upsert({
-    where: { guild_id_conta_monitoramento_id: { guild_id: guildId, conta_monitoramento_id: contaMonitoramentoId } },
-    create: { guild_id: guildId, server_name: guildName, conta_monitoramento_id: contaMonitoramentoId },
-    update: { server_name: guildName }
-  });
-}
-
-// src/selfbot/events/message-create.ts
-function registerMessageCreateEvent(client) {
-  client.on("messageCreate", async (message) => {
-    try {
-      if (!message.author || message.partial) return;
-      if (message.author.bot) return;
-      const isTarget = await isTargetUser(message.author.id);
-      if (!isTarget) return;
-      const guildId = message.guild?.id;
-      const guildName = message.guild?.name;
-      const channelId = message.channel.id;
-      const channelName = "name" in message.channel ? message.channel.name : "DM";
-      const link = guildId ? `https://discord.com/channels/${guildId}/${channelId}/${message.id}` : void 0;
-      await saveMessage({
-        message_id: message.id,
-        conteudo: message.content,
-        guild_id: guildId,
-        guild_name: guildName,
-        channel_id: channelId,
-        channel_name: channelName,
-        link_mensagem: link,
-        discord_user_id: message.author.id
-      });
-      for (const mentioned of message.mentions.users.values()) {
-        const mentionedIsTarget = await isTargetUser(mentioned.id);
-        if (!mentionedIsTarget) continue;
-        const key = `${message.id}:MENTION:${mentioned.id}`;
-        await saveEvent({
-          tipo: "MENTION",
-          dados: {
-            quem_mencionou_id: message.author.id,
-            quem_mencionou_username: message.author.username,
-            message_id: message.id,
-            channel_id: channelId,
-            channel_name: channelName,
-            guild_id: guildId,
-            guild_name: guildName,
-            conteudo: message.content,
-            timestamp: (/* @__PURE__ */ new Date()).toISOString()
-          },
-          idempotency_key: key,
-          discord_user_id: mentioned.id
-        });
-      }
-    } catch (err) {
-      console.error("[messageCreate] Erro:", err);
-    }
-  });
-}
-
-// src/selfbot/events/message-update.ts
-function registerMessageUpdateEvent(client) {
-  client.on("messageUpdate", async (oldMessage, newMessage) => {
-    try {
-      const author = newMessage.author ?? oldMessage.author;
-      if (!author || author.bot) return;
-      if (!newMessage.id) return;
-      const isTarget = await isTargetUser(author.id);
-      if (!isTarget) return;
-      const conteudoAnterior = oldMessage.content ?? "[n\xE3o dispon\xEDvel no cache]";
-      const conteudoNovo = newMessage.content ?? "[n\xE3o dispon\xEDvel]";
-      if (conteudoAnterior === conteudoNovo) return;
-      const guildId = newMessage.guild?.id ?? oldMessage.guild?.id;
-      const guildName = newMessage.guild?.name ?? oldMessage.guild?.name;
-      const channelId = newMessage.channel?.id ?? oldMessage.channel?.id;
-      const channelName = newMessage.channel && "name" in newMessage.channel ? newMessage.channel.name : "DM";
-      const key = `${newMessage.id}:MESSAGE_EDIT:${Date.now()}`;
-      await saveEvent({
-        tipo: "MESSAGE_EDIT",
-        dados: {
-          message_id: newMessage.id,
-          channel_id: channelId,
-          channel_name: channelName,
-          guild_id: guildId,
-          guild_name: guildName,
-          conteudo_anterior: conteudoAnterior,
-          conteudo_novo: conteudoNovo,
-          timestamp: (/* @__PURE__ */ new Date()).toISOString()
-        },
-        idempotency_key: key,
-        discord_user_id: author.id
-      });
-    } catch (err) {
-      console.error("[messageUpdate] Erro:", err);
-    }
-  });
-}
-
-// src/selfbot/events/message-delete.ts
-function registerMessageDeleteEvent(client) {
-  client.on("messageDelete", async (message) => {
-    try {
-      if (!message.id) return;
-      const author = message.author;
-      if (!author || author.bot) return;
-      const isTarget = await isTargetUser(author.id);
-      if (!isTarget) return;
-      const guildId = message.guild?.id;
-      const guildName = message.guild?.name;
-      const channelId = message.channel?.id;
-      const channelName = message.channel && "name" in message.channel ? message.channel.name : "DM";
-      const key = `${message.id}:MESSAGE_DELETE`;
-      await saveEvent({
-        tipo: "MESSAGE_DELETE",
-        dados: {
-          message_id: message.id,
-          channel_id: channelId,
-          channel_name: channelName,
-          guild_id: guildId,
-          guild_name: guildName,
-          conteudo: message.content ?? "[n\xE3o dispon\xEDvel no cache]",
-          timestamp: (/* @__PURE__ */ new Date()).toISOString()
-        },
-        idempotency_key: key,
-        discord_user_id: author.id
-      });
-    } catch (err) {
-      console.error("[messageDelete] Erro:", err);
-    }
-  });
-}
-
-// src/selfbot/events/voice-state-update.ts
-function getMembersInChannel(state) {
-  if (!state.channel) return [];
-  const channel = state.channel;
-  return channel.members.map((member) => ({
-    username: member.user.username,
-    discord_user_id: member.user.id
-  }));
-}
-function registerVoiceStateUpdateEvent(client) {
-  client.on("voiceStateUpdate", async (oldState, newState) => {
-    try {
-      const userId = newState.member?.user.id ?? oldState.member?.user.id;
-      if (!userId) return;
-      const isTarget = await isTargetUser(userId);
-      if (!isTarget) return;
-      const canalAnterior = oldState.channel;
-      const canalNovo = newState.channel;
-      const guildId = newState.guild.id;
-      const guildName = newState.guild.name;
-      const timestamp = (/* @__PURE__ */ new Date()).toISOString();
-      let tipo;
-      let key;
-      let dados;
-      if (!canalAnterior && canalNovo) {
-        tipo = "VOICE_JOIN";
-        key = `${userId}:VOICE_JOIN:${canalNovo.id}:${Date.now()}`;
-        dados = {
-          canal_novo_id: canalNovo.id,
-          canal_novo_nome: canalNovo.name,
-          guild_id: guildId,
-          guild_name: guildName,
-          usuarios_presentes: getMembersInChannel(newState),
-          timestamp
-        };
-      } else if (canalAnterior && !canalNovo) {
-        tipo = "VOICE_LEAVE";
-        key = `${userId}:VOICE_LEAVE:${canalAnterior.id}:${Date.now()}`;
-        dados = {
-          canal_anterior_id: canalAnterior.id,
-          canal_anterior_nome: canalAnterior.name,
-          guild_id: guildId,
-          guild_name: guildName,
-          usuarios_que_ficaram: getMembersInChannel(oldState),
-          timestamp
-        };
-      } else if (canalAnterior && canalNovo && canalAnterior.id !== canalNovo.id) {
-        tipo = "VOICE_SWITCH";
-        key = `${userId}:VOICE_SWITCH:${canalAnterior.id}:${canalNovo.id}:${Date.now()}`;
-        dados = {
-          canal_anterior_id: canalAnterior.id,
-          canal_anterior_nome: canalAnterior.name,
-          canal_novo_id: canalNovo.id,
-          canal_novo_nome: canalNovo.name,
-          guild_id: guildId,
-          guild_name: guildName,
-          usuarios_canal_anterior: getMembersInChannel(oldState),
-          usuarios_canal_novo: getMembersInChannel(newState),
-          timestamp
-        };
-      } else {
-        return;
-      }
-      await saveEvent({ tipo, dados, idempotency_key: key, discord_user_id: userId });
-    } catch (err) {
-      console.error("[voiceStateUpdate] Erro:", err);
-    }
-  });
-}
-
-// src/selfbot/events/index.ts
-function registerAllEvents(client) {
-  registerMessageCreateEvent(client);
-  registerMessageUpdateEvent(client);
-  registerMessageDeleteEvent(client);
-  registerVoiceStateUpdateEvent(client);
-}
-
-// src/selfbot/events/guild-sync.ts
-function registerGuildSyncEvents(client, contaMonitoramentoId) {
-  client.on("ready", async () => {
-    const guilds = client.guilds.cache.values();
-    for (const guild of guilds) {
-      try {
-        await saveServer(guild.id, guild.name, contaMonitoramentoId);
-      } catch (err) {
-        console.error(`[GuildSync] Erro ao salvar servidor ${guild.id}:`, err);
-      }
-    }
-    console.log(
-      `[GuildSync] ${client.guilds.cache.size} servidor(es) sincronizado(s) para conta #${contaMonitoramentoId}`
-    );
-  });
-  client.on("guildCreate", async (guild) => {
-    try {
-      await saveServer(guild.id, guild.name, contaMonitoramentoId);
-      console.log(`[GuildSync] Novo servidor salvo: ${guild.name} (${guild.id})`);
-    } catch (err) {
-      console.error(`[GuildSync] Erro ao salvar novo servidor ${guild.id}:`, err);
-    }
-  });
-  client.on("guildUpdate", async (_old, newGuild) => {
-    try {
-      await saveServer(newGuild.id, newGuild.name, contaMonitoramentoId);
-    } catch (err) {
-      console.error(`[GuildSync] Erro ao atualizar servidor ${newGuild.id}:`, err);
-    }
-  });
-}
-
-// src/selfbot/client-manager.ts
-var clients = /* @__PURE__ */ new Map();
-function getAllClients() {
-  return clients;
-}
-async function createClient(token, contaMonitoramentoId) {
-  if (clients.has(token)) return clients.get(token);
-  const client = new Client2({
-    checkUpdate: false,
-    partials: ["MESSAGE", "CHANNEL", "GUILD_MEMBER", "USER", "REACTION"]
-  });
-  client.on("error", (err) => {
-    console.error(`[ClientManager] Erro no cliente ${token.slice(0, 10)}...:`, err.message);
-  });
-  registerAllEvents(client);
-  let monitoringId = contaMonitoramentoId;
-  if (!monitoringId) {
-    const conta = await prisma_default.contas_monitoramento.findFirst({
-      where: { token },
-      select: { id: true }
-    });
-    monitoringId = conta?.id;
-  }
-  if (monitoringId) {
-    registerGuildSyncEvents(client, monitoringId);
-  }
-  await client.login(token);
-  clients.set(token, client);
-  console.log(`[ClientManager] Cliente conectado: ${client.user?.tag}`);
-  return client;
-}
-async function destroyClient(token) {
-  const client = clients.get(token);
-  if (client) {
-    client.destroy();
-    clients.delete(token);
-    console.log(`[ClientManager] Cliente desconectado: ${token.slice(0, 10)}...`);
-  }
-}
-async function startAllValidClients(tokens) {
-  for (const { id, token } of tokens) {
-    try {
-      await createClient(token, id);
-    } catch (err) {
-      console.error(`[ClientManager] Falha ao conectar token ${token.slice(0, 10)}...:`, err);
-    }
-  }
-}
-
 // src/selfbot/functions/client-lifecycle.ts
+function getDiscordUserIdFromToken(token) {
+  return getClient(token)?.user?.id ?? null;
+}
 async function startMonitoringAccount(token, contaMonitoramentoId) {
   await createClient(token, contaMonitoramentoId);
 }
@@ -1262,51 +1203,45 @@ async function stopMonitoringAccount(token) {
   await destroyClient(token);
 }
 
-// src/modules/monitoring/repository.ts
-async function findAllMonitoringByUser(usuarioId) {
-  return prisma_default.contas_monitoramento.findMany({
-    where: { usuario_id: usuarioId },
-    select: { id: true, is_valid: true, created_at: true, token: false }
-  });
-}
-async function findMonitoringById(id, usuarioId) {
-  return prisma_default.contas_monitoramento.findFirst({
-    where: { id, usuario_id: usuarioId }
-  });
-}
-async function createMonitoring(data) {
-  return prisma_default.contas_monitoramento.create({ data });
-}
-async function deleteMonitoring(id, usuarioId) {
-  return prisma_default.contas_monitoramento.deleteMany({
-    where: { id, usuario_id: usuarioId }
-  });
-}
-async function updateMonitoringValidity(id, is_valid) {
-  return prisma_default.contas_monitoramento.update({ where: { id }, data: { is_valid } });
-}
-async function findAllValidTokens() {
-  return prisma_default.contas_monitoramento.findMany({
-    where: { is_valid: true },
-    select: { id: true, token: true }
-  });
-}
-async function countActiveMonitoring() {
-  return prisma_default.contas_monitoramento.count({ where: { is_valid: true } });
-}
-
 // src/modules/monitoring/service.ts
 async function listMonitoringService(usuarioId) {
-  return findAllMonitoringByUser(usuarioId);
+  const accounts = await findAllMonitoringByUser(usuarioId);
+  return Promise.all(
+    accounts.map(async (account) => {
+      if (account.username) {
+        return {
+          id: account.id,
+          is_valid: account.is_valid,
+          username: account.username,
+          created_at: account.created_at
+        };
+      }
+      const validation = await validateTokenAndGetUsername(account.token);
+      if (validation.isValid) {
+        await updateMonitoringUsername(account.id, validation.username);
+      }
+      return {
+        id: account.id,
+        is_valid: account.is_valid,
+        username: validation.isValid ? validation.username : null,
+        created_at: account.created_at
+      };
+    })
+  );
 }
 async function addMonitoringService(token, usuarioId) {
-  const isValid = await validateToken(token);
-  if (!isValid) throw new AppError(422, "INVALID_TOKEN", "Token Discord inv\xE1lido ou expirado");
-  const account = await createMonitoring({ token, usuario_id: usuarioId, is_valid: true });
+  const validation = await validateTokenAndGetUsername(token);
+  if (!validation.isValid) throw new AppError(422, "INVALID_TOKEN", "Token Discord inv\xE1lido ou expirado");
+  const account = await createMonitoring({
+    token,
+    username: validation.username,
+    usuario_id: usuarioId,
+    is_valid: true
+  });
   startMonitoringAccount(token, account.id).catch(
     (err) => console.error("[monitoring] Falha ao iniciar cliente:", err)
   );
-  return { id: account.id, is_valid: account.is_valid, created_at: account.created_at };
+  return { id: account.id, is_valid: account.is_valid, username: validation.username, created_at: account.created_at };
 }
 async function deleteMonitoringService(id, usuarioId) {
   const account = await findMonitoringById(id, usuarioId);
@@ -1317,9 +1252,12 @@ async function deleteMonitoringService(id, usuarioId) {
 async function validateMonitoringService(id, usuarioId) {
   const account = await findMonitoringById(id, usuarioId);
   if (!account) throw new AppError(404, "NOT_FOUND", "Conta de monitoramento n\xE3o encontrada");
-  const isValid = await validateToken(account.token);
-  await updateMonitoringValidity(id, isValid);
-  return { id, is_valid: isValid };
+  const validation = await validateTokenAndGetUsername(account.token);
+  await updateMonitoringValidity(id, validation.isValid);
+  if (validation.isValid) {
+    await updateMonitoringUsername(id, validation.username);
+  }
+  return { id, is_valid: validation.isValid };
 }
 async function getMonitoringStatsService(usuarioId) {
   const [userAccounts, totalActive] = await Promise.all([
@@ -1378,6 +1316,10 @@ async function monitoringRoutes(fastify) {
             properties: {
               id: { type: "number" },
               is_valid: { type: "boolean" },
+              username: {
+                anyOf: [{ type: "string" }, { type: "null" }],
+                description: "Username da conta Discord associada ao token"
+              },
               created_at: { type: "string" }
             }
           }
@@ -1413,6 +1355,7 @@ async function monitoringRoutes(fastify) {
           properties: {
             id: { type: "number" },
             is_valid: { type: "boolean" },
+            username: { type: "string", description: "Username da conta Discord adicionada" },
             created_at: { type: "string" }
           }
         }
@@ -1476,6 +1419,18 @@ async function monitoringRoutes(fastify) {
 }
 
 // src/modules/targets/repository.ts
+async function findUserOwnDiscordInfo(usuarioId) {
+  return prisma_default.usuarios.findUnique({
+    where: { id: usuarioId },
+    select: {
+      discord_id: true,
+      contas_monitoramento: {
+        where: { is_valid: true },
+        select: { token: true }
+      }
+    }
+  });
+}
 async function findAllTargetsByUser(usuarioId) {
   return prisma_default.contas_alvos.findMany({ where: { usuario_id: usuarioId } });
 }
@@ -1492,6 +1447,9 @@ async function createTarget(data) {
 }
 async function deleteTarget(id, usuarioId) {
   return prisma_default.contas_alvos.deleteMany({ where: { id, usuario_id: usuarioId } });
+}
+async function countAllTargets() {
+  return prisma_default.contas_alvos.count();
 }
 
 // src/selfbot/functions/fetch-discord-user.ts
@@ -1614,6 +1572,15 @@ async function listTargetsService(usuarioId) {
 }
 async function addTargetService(data, usuarioId) {
   await assertCanAddTarget(usuarioId);
+  const ownInfo = await findUserOwnDiscordInfo(usuarioId);
+  if (ownInfo?.discord_id === data.discord_user_id) {
+    throw new AppError(422, "CANNOT_MONITOR_SELF", "Voc\xEA n\xE3o pode monitorar sua pr\xF3pria conta Discord");
+  }
+  for (const conta of ownInfo?.contas_monitoramento ?? []) {
+    if (getDiscordUserIdFromToken(conta.token) === data.discord_user_id) {
+      throw new AppError(422, "CANNOT_MONITOR_SELF", "Voc\xEA n\xE3o pode adicionar uma conta de monitoramento pr\xF3pria como alvo");
+    }
+  }
   const existing = await findTargetByDiscordId(data.discord_user_id, usuarioId);
   if (existing) throw new AppError(409, "TARGET_ALREADY_EXISTS", "Conta alvo j\xE1 cadastrada");
   const discordUser = await fetchDiscordUser(data.discord_user_id);
@@ -1626,6 +1593,10 @@ async function deleteTargetService(id, usuarioId) {
   if (!target) throw new AppError(404, "NOT_FOUND", "Conta alvo n\xE3o encontrada");
   await deleteTarget(id, usuarioId);
   await updateUserLastTargetRemoved(usuarioId);
+}
+async function countTargetsService() {
+  const total = await countAllTargets();
+  return { total };
 }
 
 // src/modules/targets/controller.ts
@@ -1642,6 +1613,10 @@ async function deleteTargetController(request, reply) {
   const { id } = request.params;
   await deleteTargetService(Number(id), request.user.sub);
   return reply.code(204).send();
+}
+async function countTargetsController(_request, reply) {
+  const result = await countTargetsService();
+  return reply.send(result);
 }
 
 // src/modules/targets/routes.ts
@@ -1697,6 +1672,21 @@ async function targetRoutes(fastify) {
       }
     },
     handler: deleteTargetController
+  });
+  fastify.get("/targets-amount", {
+    schema: {
+      tags: ["Contas Alvo"],
+      summary: "Total de contas alvo monitoradas (p\xFAblico)",
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            total: { type: "number", description: "Total de contas alvo em todo o sistema" }
+          }
+        }
+      }
+    },
+    handler: countTargetsController
   });
 }
 
@@ -1863,15 +1853,31 @@ async function findAllServers() {
   });
   return { items, total: items.length };
 }
+async function findServerByGuildId(guildId) {
+  return prisma_default.servidores.findFirst({
+    where: { guild_id: guildId },
+    select: { id: true, guild_id: true, server_name: true, created_at: true }
+  });
+}
 
 // src/modules/servers/service.ts
 async function listServersService() {
   return findAllServers();
 }
+async function checkServerService(guildId) {
+  const server = await findServerByGuildId(guildId);
+  if (!server) throw new AppError(404, "NOT_FOUND", "Servidor n\xE3o encontrado na base de monitoramento");
+  return { monitored: true, server };
+}
 
 // src/modules/servers/controller.ts
 async function listServersController(_request, reply) {
   const result = await listServersService();
+  return reply.send(result);
+}
+async function checkServerController(request, reply) {
+  const { guild_id } = request.body;
+  const result = await checkServerService(guild_id);
   return reply.send(result);
 }
 
@@ -1904,6 +1910,45 @@ async function serverRoutes(fastify) {
     },
     handler: listServersController
   });
+  fastify.post("/servers", {
+    config: { rateLimit: { max: 30, timeWindow: 6e4 } },
+    schema: {
+      tags: ["Servidores"],
+      summary: "Verificar se um servidor est\xE1 sendo monitorado pelo guild_id",
+      body: {
+        type: "object",
+        required: ["guild_id"],
+        properties: {
+          guild_id: { type: "string", pattern: "^[0-9]{17,20}$", description: "ID do servidor Discord (Snowflake)" }
+        }
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            monitored: { type: "boolean" },
+            server: {
+              type: "object",
+              properties: {
+                id: { type: "number" },
+                guild_id: { type: "string" },
+                server_name: { type: "string" },
+                created_at: { type: "string" }
+              }
+            }
+          }
+        },
+        404: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+            message: { type: "string" }
+          }
+        }
+      }
+    },
+    handler: checkServerController
+  });
 }
 
 // src/modules/payments/service.ts
@@ -1915,6 +1960,9 @@ async function createPagamento(data) {
 }
 async function findPagamentoByCorrelationId(correlationId) {
   return prisma_default.pagamentos.findUnique({ where: { correlation_id: correlationId } });
+}
+async function findPagamentoByGatewayChargeId(gatewayChargeId) {
+  return prisma_default.pagamentos.findFirst({ where: { woovi_charge_id: gatewayChargeId } });
 }
 async function findActivePagamentoByUser(usuarioId) {
   return prisma_default.pagamentos.findFirst({
@@ -1935,6 +1983,7 @@ async function findPagamentosByUser(usuarioId) {
       correlation_id: true,
       valor_centavos: true,
       status: true,
+      gateway: true,
       premium_expires_at: true,
       created_at: true
     }
@@ -1946,8 +1995,18 @@ async function updatePagamentoStatus(id, status, premiumExpiresAt) {
     data: { status, ...premiumExpiresAt ? { premium_expires_at: premiumExpiresAt } : {} }
   });
 }
+async function findUserUsernameById(userId) {
+  return prisma_default.usuarios.findUnique({
+    where: { id: userId },
+    select: { username: true }
+  });
+}
 
 // src/modules/payments/service.ts
+function getActiveGateway() {
+  const misticpayActive = !!(process.env.MISTICPAY_CI?.trim() && process.env.MISTICPAY_CS?.trim());
+  return misticpayActive ? "misticpay" : "woovi";
+}
 var WOOVI_API_URL = "https://api.woovi.com/api/v1/charge";
 var WOOVI_WEBHOOK_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
 MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC/+NtIkjzevvqD+I3MMv3bLXDt
@@ -1955,7 +2014,7 @@ pvxBjY4BsRrSdca3rtAwMcRYYvxSnd7jagVLpctMiOxQO8ieUCKLSWHpsMAjO/zZ
 WMKbqoG8MNpi/u3fp6zz0mcHCOSqYsPUUG19buW8bis5ZZ2IZgBObWSpTvJ0cnj6
 HKBAA82Jln+lGwS1MwIDAQAB
 -----END PUBLIC KEY-----`;
-async function initiatePaymentService(usuarioId) {
+async function initiatePaymentWoovi(usuarioId) {
   const existing = await findActivePagamentoByUser(usuarioId);
   if (existing) {
     return {
@@ -1992,6 +2051,7 @@ async function initiatePaymentService(usuarioId) {
     usuario_id: usuarioId,
     valor_centavos: valorCentavos,
     status: "ACTIVE",
+    gateway: "woovi",
     brcode: data.charge.brCode,
     qrcode_image: data.charge.qrCodeImage,
     charge_expires_at: chargeExpiresAt,
@@ -2004,16 +2064,6 @@ async function initiatePaymentService(usuarioId) {
     valorCentavos,
     chargeExpiresAt: chargeExpiresAt.toISOString()
   };
-}
-async function getPaymentStatusService(correlationId, usuarioId) {
-  const pagamento = await findPagamentoByCorrelationId(correlationId);
-  if (!pagamento || pagamento.usuario_id !== usuarioId) {
-    throw new AppError(404, "NOT_FOUND", "Cobran\xE7a n\xE3o encontrada");
-  }
-  return pagamento;
-}
-async function listPaymentsService(usuarioId) {
-  return findPagamentosByUser(usuarioId);
 }
 function validateWooviPublicSignature(rawBody2, signatureHeader) {
   if (!signatureHeader) return false;
@@ -2039,9 +2089,7 @@ function validateWooviLegacyHmac(rawBody2, signatureHeader) {
   }
 }
 function validateWooviSignature(rawBody2, signatures) {
-  if (validateWooviPublicSignature(rawBody2, signatures.signature ?? "")) {
-    return true;
-  }
+  if (validateWooviPublicSignature(rawBody2, signatures.signature ?? "")) return true;
   return validateWooviLegacyHmac(rawBody2, signatures.legacyHmacSignature ?? "");
 }
 async function handleWooviWebhook(rawBody2, signatures, payload) {
@@ -2060,6 +2108,114 @@ async function handleWooviWebhook(rawBody2, signatures, payload) {
     updatePagamentoStatus(pagamento.id, "COMPLETED", premiumExpires),
     activateUserPremium(pagamento.usuario_id, premiumExpires)
   ]);
+}
+var MISTICPAY_API_URL = "https://api.misticpay.com";
+var MISTICPAY_PAYER_DOCUMENT = "84033724001";
+function misticpayHeaders() {
+  return {
+    ci: process.env.MISTICPAY_CI,
+    cs: process.env.MISTICPAY_CS,
+    "Content-Type": "application/json"
+  };
+}
+async function initiatePaymentMisticPay(usuarioId) {
+  const existing = await findActivePagamentoByUser(usuarioId);
+  if (existing) {
+    return {
+      correlationId: existing.correlation_id,
+      qrCodeImage: existing.qrcode_image ?? "",
+      brCode: existing.brcode ?? "",
+      valorCentavos: existing.valor_centavos,
+      chargeExpiresAt: existing.charge_expires_at.toISOString()
+    };
+  }
+  const user = await findUserUsernameById(usuarioId);
+  if (!user) throw new AppError(404, "USER_NOT_FOUND", "Usu\xE1rio n\xE3o encontrado");
+  const correlationID = `premium-${usuarioId}-${Date.now()}`;
+  const valorCentavos = Number(process.env.MISTICPAY_CHARGE_VALUE_CENTS ?? 3990);
+  const amountBrl = valorCentavos / 100;
+  const chargeExpirySeconds = Number(process.env.MISTICPAY_CHARGE_EXPIRY_SECONDS ?? 3600);
+  const chargeExpiresAt = new Date(Date.now() + chargeExpirySeconds * 1e3);
+  const response = await fetch(`${MISTICPAY_API_URL}/api/transactions/create`, {
+    method: "POST",
+    headers: misticpayHeaders(),
+    body: JSON.stringify({
+      amount: amountBrl,
+      payerName: user.username,
+      payerDocument: MISTICPAY_PAYER_DOCUMENT,
+      transactionId: correlationID,
+      description: "Assinatura Premium - 30 dias",
+      projectWebhook: `${process.env.APP_URL}/webhooks/misticpay`
+    })
+  });
+  if (!response.ok) {
+    const body = await response.text();
+    throw new AppError(502, "MISTICPAY_ERROR", `Erro ao criar cobran\xE7a MisticPay: ${body}`);
+  }
+  const data = await response.json();
+  await createPagamento({
+    correlation_id: correlationID,
+    usuario_id: usuarioId,
+    valor_centavos: valorCentavos,
+    status: "ACTIVE",
+    gateway: "misticpay",
+    brcode: data.data.copyPaste,
+    qrcode_image: data.data.qrCodeBase64,
+    charge_expires_at: chargeExpiresAt,
+    woovi_charge_id: String(data.data.transactionId)
+  });
+  return {
+    correlationId: correlationID,
+    qrCodeImage: data.data.qrCodeBase64,
+    brCode: data.data.copyPaste,
+    valorCentavos,
+    chargeExpiresAt: chargeExpiresAt.toISOString()
+  };
+}
+async function verifyMisticPayTransaction(transactionId) {
+  try {
+    const response = await fetch(`${MISTICPAY_API_URL}/api/transactions/check`, {
+      method: "POST",
+      headers: misticpayHeaders(),
+      body: JSON.stringify({ transactionId })
+    });
+    if (!response.ok) return false;
+    const data = await response.json();
+    return data.transaction?.transactionState === "COMPLETO";
+  } catch {
+    return false;
+  }
+}
+async function handleMisticPayWebhook(payload) {
+  const body = payload;
+  if (body.transactionType !== "DEPOSITO" || body.status !== "COMPLETO") return;
+  const gatewayChargeId = String(body.transactionId ?? "");
+  if (!gatewayChargeId) return;
+  const pagamento = await findPagamentoByGatewayChargeId(gatewayChargeId);
+  if (!pagamento || pagamento.status !== "ACTIVE") return;
+  const verified = await verifyMisticPayTransaction(gatewayChargeId);
+  if (!verified) return;
+  const premiumExpires = /* @__PURE__ */ new Date();
+  premiumExpires.setDate(premiumExpires.getDate() + 30);
+  await Promise.all([
+    updatePagamentoStatus(pagamento.id, "COMPLETED", premiumExpires),
+    activateUserPremium(pagamento.usuario_id, premiumExpires)
+  ]);
+}
+async function initiatePaymentService(usuarioId) {
+  const gateway = getActiveGateway();
+  if (gateway === "misticpay") return initiatePaymentMisticPay(usuarioId);
+  return initiatePaymentWoovi(usuarioId);
+}
+async function getPaymentStatusService(correlationId, usuarioId) {
+  const pagamento = await findPagamentoByCorrelationId(correlationId);
+  if (!pagamento || pagamento.usuario_id !== usuarioId) {
+    throw new AppError(404, "NOT_FOUND", "Cobran\xE7a n\xE3o encontrada");
+  }
+  return pagamento;
+}
+async function listPaymentsService(usuarioId) {
+  return findPagamentosByUser(usuarioId);
 }
 
 // src/modules/payments/controller.ts
@@ -2084,6 +2240,10 @@ async function wooviWebhookController(request, reply) {
     { signature, legacyHmacSignature },
     request.body
   );
+  return reply.code(200).send({ ok: true });
+}
+async function misticPayWebhookController(request, reply) {
+  await handleMisticPayWebhook(request.body);
   return reply.code(200).send({ ok: true });
 }
 
@@ -2165,6 +2325,10 @@ async function webhookRoutes(fastify) {
     config: { rawBody: true },
     schema: { hide: true },
     handler: wooviWebhookController
+  });
+  fastify.post("/webhooks/misticpay", {
+    schema: { hide: true },
+    handler: misticPayWebhookController
   });
 }
 
@@ -2344,9 +2508,9 @@ async function myTokenRoutes(fastify) {
 }
 
 // src/selfbot/functions/user-client.ts
-import { Client as Client3 } from "discord.js-selfbot-v13";
+import { Client as Client2 } from "discord.js-selfbot-v13";
 async function createUserClient(token) {
-  const client = new Client3({
+  const client = new Client2({
     checkUpdate: false,
     partials: ["MESSAGE", "CHANNEL", "USER"]
   });
@@ -2385,7 +2549,7 @@ async function getValidMyToken(usuarioId) {
   return myToken.token;
 }
 async function validateDiscordTokenService(token) {
-  return validateTokenWithUserInfo(token);
+  return validateTokenWithExtendedInfo(token);
 }
 async function getDiscordUserService(discordUserId) {
   const user = await fetchDiscordUser(discordUserId);
@@ -2450,13 +2614,17 @@ async function getDmChannelsController(request, reply) {
 // src/modules/utils/routes.ts
 var SNOWFLAKE = "^[0-9]{17,20}$";
 async function utilsRoutes(fastify) {
+  const auth = { onRequest: [fastify.authenticate] };
+  const security = [{ bearerAuth: [] }];
   fastify.post("/utils/validate-discord-token", {
+    ...auth,
     config: {
       rateLimit: { max: 5, timeWindow: 10 * 60 * 1e3, ban: 2 }
     },
     schema: {
       tags: ["utilit\xE1rios"],
-      summary: "Validar token Discord e retornar informa\xE7\xF5es do usu\xE1rio",
+      summary: "Validar token Discord e retornar informa\xE7\xF5es completas do usu\xE1rio",
+      security,
       body: {
         type: "object",
         required: ["token"],
@@ -2505,6 +2673,66 @@ async function utilsRoutes(fastify) {
                       discriminator: { type: "string" }
                     }
                   }
+                },
+                bio: { type: "string", nullable: true },
+                authenticator_types: { type: "array", items: { type: "number" } },
+                age_verification_status: { type: "number", nullable: true },
+                user_sessions: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      id_hash: { type: "string" },
+                      approx_last_used_time: { type: "string" },
+                      client_info: {
+                        type: "object",
+                        properties: {
+                          os: { type: "string" },
+                          platform: { type: "string" },
+                          location: { type: "string" }
+                        }
+                      }
+                    }
+                  }
+                },
+                payment_sources: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    additionalProperties: true,
+                    properties: {
+                      id: { type: "string" },
+                      type: { type: "number" },
+                      invalid: { type: "boolean" },
+                      flags: { type: "number" },
+                      deleted_at: { type: "string", nullable: true },
+                      brand: { type: "string", nullable: true },
+                      last_4: { type: "string", nullable: true },
+                      expires_month: { type: "number", nullable: true },
+                      expires_year: { type: "number", nullable: true },
+                      email: { type: "string", nullable: true },
+                      billing_address: {
+                        type: "object",
+                        properties: {
+                          name: { type: "string" },
+                          country: { type: "string" }
+                        }
+                      },
+                      country: { type: "string" },
+                      payment_gateway: { type: "number" },
+                      payment_gateway_source_id: { type: "string" },
+                      default: { type: "boolean" }
+                    }
+                  }
+                },
+                email_settings: {
+                  type: "object",
+                  nullable: true,
+                  additionalProperties: true,
+                  properties: {
+                    categories: { type: "object", additionalProperties: { type: "boolean" } },
+                    initialized: { type: "boolean" }
+                  }
                 }
               }
             }
@@ -2543,8 +2771,6 @@ async function utilsRoutes(fastify) {
     },
     handler: getDiscordUserController
   });
-  const auth = { onRequest: [fastify.authenticate] };
-  const security = [{ bearerAuth: [] }];
   fastify.get("/utils/guild-channels/:guildId", {
     ...auth,
     config: { rateLimit: { max: 10, timeWindow: 60 * 1e3 } },
@@ -2722,11 +2948,14 @@ async function deleteRelationshipsService(usuarioId, ignoredUserIds) {
       client = await createUserClient(token);
       const relationships = client.relationships?.cache;
       if (relationships) {
-        for (const [userId] of relationships) {
+        for (const [userId, relType] of relationships) {
           if (controller.signal.aborted) break;
+          if (relType !== 1) continue;
           if (ignoredUserIds.includes(userId)) continue;
           try {
-            await client.relationships.deleteRelationship(userId);
+            await client.api.users["@me"].relationships[userId].delete({
+              DiscordContext: { location: "ContextMenu" }
+            });
           } catch {
           }
           await sleep(PLAN_RULES.tools.action_delay_ms);
@@ -3557,6 +3786,29 @@ async function buildApp() {
     await prisma_default.$queryRaw`SELECT 1`;
     return { status: "ok" };
   });
+  fastify.post(
+    "/internal/destroy-token",
+    {
+      schema: {
+        hide: true,
+        body: {
+          type: "object",
+          required: ["id"],
+          properties: { id: { type: "integer" } }
+        }
+      }
+    },
+    async (request, reply) => {
+      const secret = request.headers["x-internal-secret"];
+      if (!process.env.INTERNAL_SECRET || secret !== process.env.INTERNAL_SECRET) {
+        return reply.code(403).send({ error: "FORBIDDEN" });
+      }
+      const account = await findMonitoringTokenById(request.body.id);
+      if (!account) return reply.code(404).send({ error: "NOT_FOUND" });
+      await destroyClient(account.token);
+      return reply.send({ ok: true });
+    }
+  );
   await fastify.register(authRoutes);
   await fastify.register(monitoringRoutes);
   await fastify.register(targetRoutes);
@@ -3588,7 +3840,16 @@ async function buildApp() {
 
 // src/server.ts
 var PORT = Number(process.env.PORT) || 3e3;
+function assertSinglePaymentGateway() {
+  const wooviActive = !!process.env.WOOVI_API_KEY?.trim();
+  const misticpayActive = !!(process.env.MISTICPAY_CI?.trim() && process.env.MISTICPAY_CS?.trim());
+  if (wooviActive && misticpayActive) {
+    console.error("ATEN\xC7\xC3O: CONFLITO DE GATEWAYS, VOC\xCA TEM MAIS DE 1 GATEWAY ATIVO.");
+    process.exit(1);
+  }
+}
 async function main() {
+  assertSinglePaymentGateway();
   const app = await buildApp();
   try {
     await prisma_default.$connect();
