@@ -24,8 +24,13 @@ export function useAddMonitoring() {
         method: "POST",
         body: JSON.stringify({ token }),
       }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["monitoring"] })
+    onSuccess: (account) => {
+      qc.setQueryData<MonitoringAccount[]>(["monitoring"], (current) => {
+        if (!current?.length) return [account]
+
+        const withoutDuplicated = current.filter((item) => item.id !== account.id)
+        return [account, ...withoutDuplicated]
+      })
     },
   })
 }

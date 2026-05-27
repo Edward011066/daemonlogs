@@ -1,5 +1,6 @@
 import { useEffect } from "react"
 import { useNavigate } from "react-router-dom"
+import { BackNavigationLink } from "@/components/shared/BackNavigationLink"
 import { setToken } from "@/lib/auth"
 
 export function AuthCallbackPage() {
@@ -16,8 +17,11 @@ export function AuthCallbackPage() {
   }, [navigate])
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <p className="text-sm text-muted-foreground">Autenticando...</p>
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="w-full max-w-sm space-y-4 text-center">
+        <BackNavigationLink className="mx-auto" />
+        <p className="text-sm text-muted-foreground">Autenticando...</p>
+      </div>
     </div>
   )
 }

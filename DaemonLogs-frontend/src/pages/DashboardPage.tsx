@@ -3,6 +3,7 @@ import { Link } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { PlanBadge } from "@/components/shared/PlanBadge"
+import { ServerMonitoringLookupCard } from "@/components/shared/ServerMonitoringLookupCard"
 import { ServersMarquee } from "@/components/shared/ServersMarquee"
 import { EventBadge } from "@/components/events/EventBadge"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
@@ -102,6 +103,8 @@ export function DashboardPage() {
       </div>
 
       <ServersMarquee />
+
+      <ServerMonitoringLookupCard />
 
       {events && events.items.length > 0 && (
         <Card className="bg-surface">

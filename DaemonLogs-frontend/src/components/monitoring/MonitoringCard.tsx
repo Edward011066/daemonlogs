@@ -43,9 +43,14 @@ export function MonitoringCard({ account }: MonitoringCardProps) {
         <div className="flex items-center gap-3">
           <StatusDot active={account.is_valid} />
           <div>
-            <p className="text-xs font-medium text-foreground">
-              {account.is_valid ? "Token válido" : "Token inválido"}
-            </p>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              <p className="text-sm font-medium text-foreground">
+                {account.username ?? `Conta #${account.id}`}
+              </p>
+              <span className="text-xs text-muted-foreground">
+                {account.is_valid ? "Token válido" : "Token inválido"}
+              </span>
+            </div>
             <p className="font-code text-[11px] text-muted-foreground">
               Adicionado em {new Date(account.created_at).toLocaleDateString("pt-BR")}
             </p>

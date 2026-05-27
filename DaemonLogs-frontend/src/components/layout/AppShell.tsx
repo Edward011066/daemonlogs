@@ -6,6 +6,7 @@ import { Header } from "./Header"
 import { ToolStatusBanner } from "@/components/tools/ToolStatusBanner"
 import { GuestModeProvider, useGuestMode } from "@/contexts/GuestModeContext"
 import { LoginPromptDialog } from "@/components/shared/LoginPromptDialog"
+import { BackNavigationLink } from "@/components/shared/BackNavigationLink"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { clearGuestMode } from "@/lib/guest"
@@ -21,6 +22,7 @@ function AppShellInner() {
   const handleMainClickCapture = (e: React.MouseEvent) => {
     if (!isGuest) return
     const target = e.target as HTMLElement
+    if (target.closest("[data-allow-guest-interaction]")) return
     if (target.closest(INTERACTIVE_SELECTOR)) {
       e.stopPropagation()
       e.preventDefault()
@@ -76,6 +78,7 @@ function AppShellInner() {
           className="flex-1 overflow-y-auto p-4 md:p-6"
           onClickCapture={handleMainClickCapture}
         >
+          <BackNavigationLink className="mb-4" />
           <Outlet />
         </main>
       </div>

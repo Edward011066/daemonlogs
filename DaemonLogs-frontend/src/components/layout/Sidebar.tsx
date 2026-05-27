@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom"
 import {
   Activity,
+  BookOpen,
   ChartBar,
   CreditCard,
   Radio,
@@ -14,6 +15,7 @@ import { PlanBadge } from "@/components/shared/PlanBadge"
 
 const NAV_ITEMS = [
   { to: "/dashboard",  label: "Dashboard",    icon: ChartBar },
+  { to: "/how-it-works", label: "Como funciona?", icon: BookOpen },
   { to: "/monitoring", label: "Monitoramento", icon: Radio },
   { to: "/targets",    label: "Alvos",         icon: Users },
   { to: "/events",     label: "Eventos",       icon: Activity },

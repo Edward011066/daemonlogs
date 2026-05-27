@@ -98,6 +98,49 @@ function ContentBlock({
   )
 }
 
+type TechnicalItem = {
+  label: string
+  value: string
+  copy?: boolean
+}
+
+function TechnicalDetails({
+  items,
+  payload,
+}: {
+  items: TechnicalItem[]
+  payload?: string
+}) {
+  if (!items.length && !payload) return null
+
+  return (
+    <details className="rounded-lg border border-border bg-surface-2">
+      <summary className="cursor-pointer list-none px-3 py-2 text-xs font-medium text-muted-foreground [&::-webkit-details-marker]:hidden">
+        Mais informações {"{}"}
+      </summary>
+      <div className="space-y-3 border-t border-border px-3 py-3">
+        {items.length > 0 && (
+          <div className="space-y-1.5">
+            {items.map((item) => (
+              <MetaChip key={`${item.label}-${item.value}`} label={item.label} value={item.value} copy={item.copy} />
+            ))}
+          </div>
+        )}
+        {payload && (
+          <div className="rounded-md border border-border bg-background px-3 py-2">
+            <p className="mb-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+              Payload bruto
+            </p>
+            <pre className="overflow-x-auto whitespace-pre-wrap break-words font-mono text-[11px] text-foreground/80">
+              {payload}
+            </pre>
+          </div>
+        )}
+      </div>
+    </details>
+  )
+}
+
 function UserChip({ user }: { user: DiscordUserRef }) {
   return (
     <span className="inline-flex flex-col gap-0.5 rounded-lg border border-border bg-surface-2 px-2.5 py-1.5 text-xs">
@@ -251,15 +294,16 @@ function MessageContent({ event }: { event: DiscordEvent }) {
   const channelId = firstStr(data, ["channel_id"])
   const link = firstStr(data, ["link_mensagem", "message_link"])
   const timestamp = firstStr(data, ["timestamp"]) ?? event.created_at
+  const technicalItems: TechnicalItem[] = []
+
+  if (messageId) technicalItems.push({ label: "Message ID", value: messageId, copy: true })
+  if (channelId) technicalItems.push({ label: "Channel ID", value: channelId, copy: true })
+  if (guildId) technicalItems.push({ label: "Guild ID", value: guildId, copy: true })
+  technicalItems.push({ label: "ID interno do evento", value: String(event.id), copy: true })
+  const rawPayload = Object.keys(data).length > 0 ? JSON.stringify(data, null, 2) : undefined
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-2 sm:grid-cols-2">
-        {guildName && <MetaChip label="Servidor" value={guildName} />}
-        {channelName && <MetaChip label="Canal" value={`#${channelName}`} />}
-        <MetaChip label="Horário" value={formatFull(timestamp)} />
-      </div>
-
       <div className="space-y-2">
         {(event.tipo === "MESSAGE_SENT" || event.tipo === "MENTION") && content && (
           <ContentBlock
@@ -286,11 +330,13 @@ function MessageContent({ event }: { event: DiscordEvent }) {
         )}
       </div>
 
-      <div className="space-y-1.5">
-        {messageId && <MetaChip label="Message ID" value={messageId} copy />}
-        {channelId && <MetaChip label="Channel ID" value={channelId} copy />}
-        {guildId && <MetaChip label="Guild ID" value={guildId} copy />}
+      <div className="grid gap-2 sm:grid-cols-2">
+        {guildName && <MetaChip label="Servidor" value={guildName} />}
+        {channelName && <MetaChip label="Canal" value={`#${channelName}`} />}
+        <MetaChip label="Horário" value={formatFull(timestamp)} />
       </div>
+
+      <TechnicalDetails items={technicalItems} payload={rawPayload} />
 
       {link && (
         <a
@@ -346,8 +392,12 @@ export function EventDetailSheet({ event, open, onOpenChange }: EventDetailSheet
         <ScrollArea className="flex-1">
           <div className="space-y-4 px-6 py-5">
             {isVoice ? <VoiceContent event={event} /> : <MessageContent event={event} />}
-            <Separator />
-            <MetaChip label="ID interno do evento" value={String(event.id)} copy />
+            {isVoice && (
+              <>
+                <Separator />
+                <MetaChip label="ID interno do evento" value={String(event.id)} copy />
+              </>
+            )}
           </div>
         </ScrollArea>
       </SheetContent>

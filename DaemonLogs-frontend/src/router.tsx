@@ -10,7 +10,9 @@ import { ForgotPasswordPage } from "@/pages/auth/ForgotPasswordPage"
 import { ResetPasswordPage } from "@/pages/auth/ResetPasswordPage"
 import { LandingPage } from "@/pages/LandingPage"
 import { DashboardPage } from "@/pages/DashboardPage"
+import { HowItWorksPage } from "@/pages/HowItWorksPage"
 import { MonitoringPage } from "@/pages/MonitoringPage"
+import { MonitoringContributePage } from "@/pages/MonitoringContributePage"
 import { TargetsPage } from "@/pages/TargetsPage"
 import { EventsPage } from "@/pages/EventsPage"
 import { ToolsPage } from "@/pages/ToolsPage"
@@ -37,7 +39,9 @@ export const router = createBrowserRouter([
         element: <AppShell />,
         children: [
           { path: "/dashboard", element: <DashboardPage /> },
+          { path: "/how-it-works", element: <HowItWorksPage /> },
           { path: "/monitoring", element: <MonitoringPage /> },
+          { path: "/monitoring-contribute", element: <MonitoringContributePage /> },
           { path: "/targets", element: <TargetsPage /> },
           { path: "/events", element: <EventsPage /> },
           { path: "/tools", element: <ToolsPage /> },
