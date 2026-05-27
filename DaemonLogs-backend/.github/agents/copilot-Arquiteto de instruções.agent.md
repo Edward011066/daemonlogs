@@ -383,6 +383,7 @@ Leia (não suponha):
 | Integração de API externa | IA inventa endpoints, headers, eventos ou fluxos de erro | Instrução apontando para spec/doc oficial, autenticação, versionamento, rate limit e assinatura de webhook quando houver |
 | Arquivo gerado (migrations, CSS, proto) | IA edita o arquivo gerado | Instrução listando arquivos intocáveis |
 | Path aliases (tsconfig, jsconfig) | IA usa paths relativos longos | Instrução global com tabela de aliases |
+| Padrão de criação repetitivo (ex: CRUDs, rotas, CRONs) | IA esquece os passos burocráticos ao criar novas features | Criar SKILL.md detalhando a sequência exata de criação |
 
 ### Fase B3 — Plano de Bootstrap (apresentar antes de criar)
 
@@ -419,8 +420,10 @@ Leia (não suponha):
 **Instruction Debt inicial:** [N módulos sem cobertura]
 **Estimativa de Health Score pós-bootstrap:** [X]/100
 
+**O que será avaliado para criação sob demanda:**
+- `.github/skills/[tarefa]/SKILL.md`: Apenas se for detectado um fluxo de trabalho claro e repetitivo de criação passo a passo (ex: criar nova rota, novo componente).
+
 **O que NÃO será criado agora:**
-- Skills (só quando workflow repetível for bem conhecido)
 - Instructions de integrações sem spec disponível ou sem documentação oficial verificável
 
 Posso prosseguir?
@@ -491,6 +494,25 @@ Para cada instrução criada em Modo C:
 ---
 
 ## 8. Biblioteca de Templates
+
+### Template: Skill para tarefas repetitivas (SKILL.md)
+
+```yaml
+name: "nome-da-tarefa"
+description: "Use when: [ação], [ação], precisar executar [tarefa específica]."
+```
+# [Nome da Tarefa]
+
+Acione esta habilidade para [objetivo da skill]. Siga exatamente estes passos na ordem abaixo:
+
+## Steps
+1. **[Ação 1]:** [Instrução clara do que pesquisar, ler ou criar primeiro].
+2. **[Ação 2]:** [Regra de validação ou modificação de arquivo].
+3. **[Ação 3]:** [Geração de testes, atualização de docs ou verificação final].
+
+## Regras estritas durante a execução
+- Não pule nenhum passo.
+- [Regra específica da tarefa].
 
 ### Template: instrução de módulo backend
 
@@ -619,5 +641,4 @@ Se houver conflito entre código local e documentação oficial, destacar a dive
 - **Sempre use** o nome oficial do modelo no campo `model`; esforço de raciocínio pertence ao cliente/model picker
 - **Sempre inclua** a tool `agent` quando o fluxo depender de subagentes do VS Code
 - A instrução mais específica (`applyTo` de pasta) tem precedência sobre a global — use isso ao modularizar
-- Se uma instruction tem mais de 120 linhas, avalie se parte do conteúdo deveria virar uma **Skill** (conteúdo de referência) em vez de instruction (regra de comportamento)
-- Instructions ensinam **como agir**. Skills ensinam **como funciona**. Não confunda os dois.
+- Se uma instruction tem mais de 120 linhas descrevendo um passo a passo, transforme isso em uma **Skill**. Instructions definem **regras passivas e limites** (o que usar, o que evitar). Skills definem **fluxos de trabalho ativos e repetitivos** (passo a passo para criar algo novo). Não confunda os dois.
