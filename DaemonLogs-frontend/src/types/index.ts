@@ -105,6 +105,8 @@ export interface VoiceSwitchDados {
   canal_anterior_nome: string
   canal_novo_id: string
   canal_novo_nome: string
+  usuarios_canal_anterior?: DiscordUserRef[]
+  usuarios_canal_novo?: DiscordUserRef[]
 }
 
 /** Dados brutos de MESSAGE_SENT / MESSAGE_EDIT / MESSAGE_DELETE / MENTION */

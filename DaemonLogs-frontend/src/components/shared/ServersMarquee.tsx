@@ -18,9 +18,13 @@ function pickRandomServers(items: DiscordServer[], limit: number) {
 
 interface ServersMarqueeProps {
   className?: string
+  title?: string
 }
 
-export function ServersMarquee({ className }: ServersMarqueeProps) {
+export function ServersMarquee({
+  className,
+  title = "Alguns dos servidores monitorados",
+}: ServersMarqueeProps) {
   const { data, isLoading } = useServers()
   const [sample, setSample] = useState<DiscordServer[]>([])
 
@@ -41,7 +45,7 @@ export function ServersMarquee({ className }: ServersMarqueeProps) {
     <section className={cn("space-y-3", className)}>
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Eye className="h-4 w-4 text-accent" />
-        <span>Alguns dos servidores monitorados</span>
+        <span>{title}</span>
       </div>
 
       <div className="relative overflow-hidden rounded-2xl border border-border bg-surface/70 px-3 py-3">

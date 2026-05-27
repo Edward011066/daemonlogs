@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom"
+﻿import { Link, useNavigate } from "react-router-dom"
 import {
   Activity,
   Eye,
@@ -15,43 +15,44 @@ import { Badge } from "@/components/ui/badge"
 import { ServersMarquee } from "@/components/shared/ServersMarquee"
 import { getAuthMode, getToken } from "@/lib/auth"
 import { setGuestMode } from "@/lib/guest"
+import { useTargetsAmount } from "@/hooks/useTargetsAmount"
 
 const FEATURES = [
   {
     icon: Eye,
     title: "Monitoramento em tempo real",
     description:
-      "Saiba quando um usuário entra ou sai de canal de voz, edita ou apaga mensagens, e quando te menciona. Cada movimento registrado.",
+      "Saiba em qual servidor e canal, mensagens enviadas, deletadas em diferentes canais e servidores dos usuários que você desejar. Cada movimento registrado.",
   },
   {
     icon: Radio,
     title: "Múltiplas contas de coleta",
     description:
-      "Adicione tokens selfbot para ampliar o alcance do monitoramento. Mais contas, mais cobertura, zero gaps.",
+      "Adicione vários tokens selfbot para ampliar o alcance. Mais contas, cobertura total — nenhum evento escapa.",
   },
   {
     icon: Users,
     title: "Gestão de alvos",
     description:
-      "Cadastre os usuários Discord que você quer acompanhar. O sistema faz o resto — sem você precisar ficar online.",
+      "Cadastre os IDs Discord que você quer rastrear. O sistema registra tudo automaticamente, 24h por dia, sem você precisar estar online.",
   },
   {
     icon: Activity,
     title: "Feed de eventos",
     description:
-      "Histórico completo e filtrado de todos os eventos: por tipo, por período, por alvo. Nada se perde.",
+      "Histórico filtrado e completo de todos os eventos: por alvo, por tipo, por período. Nada se perde, nada some.",
   },
   {
     icon: MessageSquareOff,
-    title: "Limpeza de mensagens",
+    title: "Clear Chat",
     description:
-      "Apague suas mensagens em DMs, canais ou servidores inteiros com um clique. Controle total sobre o que você deixou para trás.",
+      "Apague suas mensagens em DMs específicas, canais ou servidores inteiros com um clique. Controle total sobre o rastro que você deixou no Discord.",
   },
   {
     icon: Terminal,
     title: "Automações de conta",
     description:
-      "Feche DMs, saia de servidores, remova amizades. Ferramentas de automação para gerenciar sua presença no Discord sem esforço.",
+      "Várias ferramentas de automação: clear chat, fechar DMs, sair de servidores, desfazer amizades, monitoramentos e muito mais.",
   },
 ]
 
@@ -61,6 +62,7 @@ export function LandingPage() {
   const guestPrimaryLink = isLocalAuth ? "/auth/register" : "/auth/login"
   const guestPrimaryText = isLocalAuth ? "Começar agora" : "Entrar com Discord"
   const navigate = useNavigate()
+  const { data: targetsData } = useTargetsAmount()
 
   const handleExplore = () => {
     setGuestMode()
@@ -70,16 +72,18 @@ export function LandingPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       {/* Navbar */}
-      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+      <header className="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
           <div className="flex items-center gap-2">
-            <Eye className="h-5 w-5 text-accent" />
-            <span className="text-sm font-semibold tracking-tight text-foreground">DaemonLogs</span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent/15">
+              <Eye className="h-4 w-4 text-accent" />
+            </div>
+            <span className="text-sm font-bold tracking-tight text-foreground">DaemonLogs</span>
           </div>
 
-          <nav className="flex items-center gap-3">
+          <nav className="flex items-center gap-2">
             {isLoggedIn ? (
-              <Button asChild size="sm">
+              <Button asChild size="sm" className="shadow-sm shadow-accent/20">
                 <Link to="/dashboard">Acessar painel</Link>
               </Button>
             ) : (
@@ -88,7 +92,7 @@ export function LandingPage() {
                   <Link to="/auth/login">Entrar</Link>
                 </Button>
                 {isLocalAuth && (
-                  <Button size="sm" asChild>
+                  <Button size="sm" className="shadow-sm shadow-accent/20" asChild>
                     <Link to="/auth/register">Criar conta</Link>
                   </Button>
                 )}
@@ -99,31 +103,39 @@ export function LandingPage() {
       </header>
 
       {/* Hero */}
-      <section className="mx-auto flex w-full max-w-6xl flex-col items-center px-6 pb-24 pt-20 text-center">
-        <Badge variant="outline" className="mb-6 border-accent/30 bg-accent/5 text-accent">
+      <section className="relative mx-auto flex w-full max-w-6xl flex-col items-center overflow-hidden px-6 pb-24 pt-20 text-center">
+        {/* Ambient glow */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 flex justify-center">
+          <div className="h-[400px] w-[900px] rounded-full bg-accent/8 blur-3xl" />
+        </div>
+
+        <Badge
+          variant="outline"
+          className="mb-6 border-accent/40 bg-accent/10 px-4 py-1 text-accent shadow-sm shadow-accent/10"
+        >
           Monitoramento Discord
         </Badge>
 
-        <h1 className="max-w-3xl text-4xl font-bold leading-tight tracking-tight text-foreground sm:text-5xl">
+        <h1 className="max-w-3xl text-4xl font-extrabold leading-tight tracking-tight text-foreground sm:text-5xl lg:text-6xl">
           Olhe para a tela e diga:{" "}
-          <span className="text-accent">estou de olho em você.</span>
+          <span className="text-accent drop-shadow-[0_0_30px_hsl(265_88%_78%_/_0.4)]">
+            estou de olho em você.
+          </span>
         </h1>
 
-        <p className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground">
-          DaemonLogs monitora atividades no Discord de forma
-          silenciosa, te dá controle real sobre o que acontece ao seu redor. Você pode verificar canais que uma pessoa entra, quem estava lá, mensagens enviadas, editadas, apagadas. Além é claro, de você conseguir automatizar sua conta.
-          Joe aprovaria.
+        <p className="mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground">
+          DaemonLogs monitora atividades no Discord de forma silenciosa. Saiba em qual servidor e canal os usuários estão, o que escrevem, apagam e editam — em tempo real, sem você fazer nada.
         </p>
 
         <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-          <Button size="lg" asChild>
+          <Button size="lg" className="shadow-lg shadow-accent/25 hover:shadow-accent/40 transition-shadow" asChild>
             <Link to={isLoggedIn ? "/dashboard" : guestPrimaryLink}>
               {isLoggedIn ? "Acessar painel" : guestPrimaryText}
             </Link>
           </Button>
           {!isLoggedIn && (
             <>
-              <Button size="lg" variant="outline" asChild>
+              <Button size="lg" variant="outline" className="border-border/60" asChild>
                 <Link to="/auth/login">{isLocalAuth ? "Já tenho conta" : "Entrar"}</Link>
               </Button>
               <Button size="lg" variant="ghost" onClick={handleExplore}>
@@ -133,25 +145,31 @@ export function LandingPage() {
           )}
         </div>
 
-        {/* Decorative stats */}
-        <div className="mt-16 flex flex-wrap items-center justify-center gap-8 text-center">
-          {[
-            { label: "Tipos de evento", value: "6" },
-            { label: "Ferramentas de automação", value: "5+" },
-            { label: "Latência de coleta", value: "~1s" },
-          ].map((stat) => (
-            <div key={stat.label} className="space-y-1">
-              <p className="text-3xl font-bold text-accent">{stat.value}</p>
-              <p className="text-xs text-muted-foreground">{stat.label}</p>
-            </div>
-          ))}
-        </div>
+        {/* Live targets counter */}
+        {targetsData && targetsData.total > 0 && (
+          <div className="mt-10 inline-flex items-center gap-2.5 rounded-full border border-accent/20 bg-accent/5 px-5 py-2.5 shadow-sm shadow-accent/5">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
+            </span>
+            <span className="text-sm text-foreground">
+              Monitoramos atualmente{" "}
+              <span className="font-bold text-accent">
+                {targetsData.total.toLocaleString("pt-BR")}
+              </span>{" "}
+              usuários agora
+            </span>
+          </div>
+        )}
 
-        <ServersMarquee className="mt-16 w-full text-left" />
+        <ServersMarquee
+          className="mt-16 w-full text-left"
+          title="Alguns dos servidores monitorados"
+        />
       </section>
 
       {/* Features */}
-      <section className="border-t border-border/50 bg-surface/50 py-20">
+      <section className="border-t border-border/50 bg-surface/40 py-20">
         <div className="mx-auto max-w-6xl px-6">
           <div className="mb-12 text-center">
             <h2 className="text-2xl font-bold text-foreground">
@@ -164,13 +182,16 @@ export function LandingPage() {
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((feature) => (
-              <Card key={feature.title} className="border-border/50 bg-surface">
+              <Card
+                key={feature.title}
+                className="group border-border/50 bg-surface transition-all duration-200 hover:border-accent/30 hover:bg-surface-2 hover:shadow-lg hover:shadow-accent/5"
+              >
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-md bg-accent/10">
-                      <feature.icon className="h-4 w-4 text-accent" />
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/10 transition-colors group-hover:bg-accent/20">
+                      <feature.icon className="h-5 w-5 text-accent" />
                     </div>
-                    <CardTitle className="text-sm font-medium">{feature.title}</CardTitle>
+                    <CardTitle className="text-sm font-semibold">{feature.title}</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -185,9 +206,14 @@ export function LandingPage() {
       </section>
 
       {/* CTA final */}
-      <section className="py-20">
+      <section className="relative overflow-hidden py-24">
+        <div className="pointer-events-none absolute inset-0 -z-10 flex items-center justify-center">
+          <div className="h-[300px] w-[600px] rounded-full bg-accent/6 blur-3xl" />
+        </div>
         <div className="mx-auto max-w-xl px-6 text-center">
-          <Zap className="mx-auto mb-4 h-8 w-8 text-accent" />
+          <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-accent/15 shadow-lg shadow-accent/10">
+            <Zap className="h-6 w-6 text-accent" />
+          </div>
           <h2 className="text-2xl font-bold text-foreground">
             Pronto para saber de tudo?
           </h2>
@@ -195,9 +221,9 @@ export function LandingPage() {
             Configure em minutos. Sem complexidade, sem instalação local. Só resultados.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Button size="lg" asChild>
+            <Button size="lg" className="shadow-lg shadow-accent/25 hover:shadow-accent/40 transition-shadow" asChild>
               <Link to={isLoggedIn ? "/dashboard" : guestPrimaryLink}>
-                {isLoggedIn ? "Ir para o painel" : isLocalAuth ? "Criar conta gratis" : "Entrar com Discord"}
+                {isLoggedIn ? "Ir para o painel" : isLocalAuth ? "Criar conta grátis" : "Entrar com Discord"}
               </Link>
             </Button>
           </div>

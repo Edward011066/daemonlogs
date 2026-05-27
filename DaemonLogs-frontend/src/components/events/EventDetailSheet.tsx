@@ -100,9 +100,14 @@ function ContentBlock({
 
 function UserChip({ user }: { user: DiscordUserRef }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-2 px-2 py-0.5 text-xs text-muted-foreground">
-      <span className="h-1.5 w-1.5 rounded-full bg-success" />
-      {user.username}
+    <span className="inline-flex flex-col gap-0.5 rounded-lg border border-border bg-surface-2 px-2.5 py-1.5 text-xs">
+      <span className="flex items-center gap-1.5 text-foreground/90">
+        <span className="h-1.5 w-1.5 rounded-full bg-success shrink-0" />
+        {user.username}
+      </span>
+      <span className="font-mono text-[10px] text-muted-foreground pl-3">
+        {user.discord_user_id}
+      </span>
     </span>
   )
 }
@@ -178,6 +183,8 @@ function VoiceContent({ event }: { event: DiscordEvent }) {
 
   if (event.tipo === "VOICE_SWITCH") {
     const voice = data as unknown as VoiceSwitchDados
+    const usersAnterior = getUsers(data.usuarios_canal_anterior)
+    const usersNovo = getUsers(data.usuarios_canal_novo)
     return (
       <div className="space-y-4">
         <div className="grid gap-2 sm:grid-cols-2">
@@ -186,6 +193,34 @@ function VoiceContent({ event }: { event: DiscordEvent }) {
           {voice.canal_novo_nome && <MetaChip label="Entrou em" value={voice.canal_novo_nome} />}
           <MetaChip label="Horário" value={formatFull(timestamp)} />
         </div>
+        {(usersAnterior.length > 0 || usersNovo.length > 0) && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {usersAnterior.length > 0 && (
+              <div className="rounded-lg border border-border bg-surface-2 p-3">
+                <p className="mb-2 text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Quem ficou no canal anterior
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {usersAnterior.map((u) => (
+                    <UserChip key={u.discord_user_id} user={u} />
+                  ))}
+                </div>
+              </div>
+            )}
+            {usersNovo.length > 0 && (
+              <div className="rounded-lg border border-border bg-surface-2 p-3">
+                <p className="mb-2 text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Quem estava no canal novo
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {usersNovo.map((u) => (
+                    <UserChip key={u.discord_user_id} user={u} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
         <div className="space-y-1.5">
           {voice.canal_anterior_id && (
             <MetaChip label="Canal anterior ID" value={voice.canal_anterior_id} copy />

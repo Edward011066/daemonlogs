@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom"
-import { LogOut, User } from "lucide-react"
+import { LogOut, Menu, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -12,7 +12,11 @@ import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { apiFetch } from "@/lib/api"
 import { clearToken } from "@/lib/auth"
 
-export function Header() {
+interface HeaderProps {
+  onMenuClick?: () => void
+}
+
+export function Header({ onMenuClick }: HeaderProps) {
   const navigate = useNavigate()
   const { data: user } = useCurrentUser()
 
@@ -23,7 +27,24 @@ export function Header() {
   }
 
   return (
-    <header className="flex h-14 items-center justify-end border-b border-border bg-surface px-6">
+    <header className="flex h-14 items-center border-b border-border bg-surface px-4">
+      {/* Mobile: hamburger + app name */}
+      <div className="flex items-center gap-2 md:hidden">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0"
+          onClick={onMenuClick}
+          aria-label="Abrir menu"
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+        <span className="text-sm font-semibold tracking-tight text-foreground">DaemonLogs</span>
+      </div>
+
+      {/* Spacer */}
+      <div className="flex-1" />
+
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">

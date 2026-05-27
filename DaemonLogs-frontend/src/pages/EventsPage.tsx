@@ -67,6 +67,11 @@ function getGuild(event: DiscordEvent): string | null {
   return sVal(getRaw(event).guild_name)
 }
 
+function getChannel(event: DiscordEvent): string | null {
+  const data = getRaw(event)
+  return sVal(data.channel_name) ?? sVal(data.canal_nome) ?? sVal(data.canal_novo_nome) ?? sVal(data.canal_anterior_nome)
+}
+
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
   const sec = Math.floor(diff / 1000)
@@ -147,6 +152,7 @@ export function EventsPage() {
               const targetLabel = event.conta_alvo.username ?? event.conta_alvo.discord_user_id
               const preview = getEventPreview(event)
               const guild = getGuild(event)
+              const channel = getChannel(event)
               return (
                 <button
                   key={event.id}
@@ -158,11 +164,16 @@ export function EventsPage() {
                     <EventBadge type={event.tipo} showIcon className="text-[11px]" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline gap-1.5">
+                    <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
                       <span className="text-sm font-medium text-foreground">{targetLabel}</span>
                       {guild && (
-                        <span className="hidden truncate text-xs text-muted-foreground sm:block">
+                        <span className="truncate text-xs text-muted-foreground">
                           · {guild}
+                        </span>
+                      )}
+                      {channel && (
+                        <span className="truncate text-xs text-accent/70">
+                          #{channel}
                         </span>
                       )}
                     </div>
