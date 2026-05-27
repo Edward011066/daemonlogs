@@ -8,6 +8,7 @@ export function registerMessageUpdateEvent(client: Client): void {
       const author = newMessage.author ?? oldMessage.author
       if (!author || author.bot) return
       if (!newMessage.id) return
+      if (!newMessage.guild && !oldMessage.guild) return // ignorar DMs — monitorar apenas servidores (guilds)
       // Se a mensagem nova não tem conteúdo e é parcial, não temos o texto anterior — apenas logamos o evento sem conteúdo
 
       const isTarget = await isTargetUser(author.id)

@@ -60,6 +60,7 @@ export async function monitoringRoutes(fastify: FastifyInstance) {
           properties: {
             id: { type: 'number' },
             is_valid: { type: 'boolean' },
+            username: { type: 'string', description: 'Username da conta Discord adicionada' },
             created_at: { type: 'string' },
           },
         },

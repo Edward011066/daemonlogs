@@ -1,6 +1,6 @@
 import { Client, Message } from 'discord.js-selfbot-v13'
 import { isTargetUser } from '../functions/target-utils.js'
-import { saveEvent } from '../functions/save-events.js'
+import { saveEvent, findMessageContent } from '../functions/save-events.js'
 
 export function registerMessageDeleteEvent(client: Client): void {
   client.on('messageDelete', async (message) => {
@@ -8,6 +8,7 @@ export function registerMessageDeleteEvent(client: Client): void {
       if (!message.id) return
       const author = message.author
       if (!author || author.bot) return
+      if (!message.guild) return // ignorar DMs — monitorar apenas servidores (guilds)
 
       const isTarget = await isTargetUser(author.id)
       if (!isTarget) return
@@ -22,6 +23,13 @@ export function registerMessageDeleteEvent(client: Client): void {
 
       const key = `${message.id}:MESSAGE_DELETE`
 
+      // Tentar obter o conteúdo real: primeiro do cache do discord.js,
+      // depois do banco (mensagens salvas pelo evento messageCreate)
+      let conteudo = message.content ?? null
+      if (!conteudo) {
+        conteudo = await findMessageContent(message.id)
+      }
+
       await saveEvent({
         tipo: 'MESSAGE_DELETE',
         dados: {
@@ -30,7 +38,7 @@ export function registerMessageDeleteEvent(client: Client): void {
           channel_name: channelName,
           guild_id: guildId,
           guild_name: guildName,
-          conteudo: message.content ?? '[não disponível no cache]',
+          conteudo: conteudo ?? 'Conteúdo indisponível',
           timestamp: new Date().toISOString(),
         },
         idempotency_key: key,

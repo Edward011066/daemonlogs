@@ -1,5 +1,5 @@
 import { AppError } from '../../utils/app-error.js'
-import { validateToken } from '../../selfbot/functions/validate-token.js'
+import { validateToken, validateTokenAndGetUsername } from '../../selfbot/functions/validate-token.js'
 import { startMonitoringAccount, stopMonitoringAccount } from '../../selfbot/functions/client-lifecycle.js'
 import {
   findAllMonitoringByUser,
@@ -15,8 +15,8 @@ export async function listMonitoringService(usuarioId: number) {
 }
 
 export async function addMonitoringService(token: string, usuarioId: number) {
-  const isValid = await validateToken(token)
-  if (!isValid) throw new AppError(422, 'INVALID_TOKEN', 'Token Discord inválido ou expirado')
+  const validation = await validateTokenAndGetUsername(token)
+  if (!validation.isValid) throw new AppError(422, 'INVALID_TOKEN', 'Token Discord inválido ou expirado')
 
   const account = await createMonitoring({ token, usuario_id: usuarioId, is_valid: true })
 
@@ -25,7 +25,7 @@ export async function addMonitoringService(token: string, usuarioId: number) {
     console.error('[monitoring] Falha ao iniciar cliente:', err)
   )
 
-  return { id: account.id, is_valid: account.is_valid, created_at: account.created_at }
+  return { id: account.id, is_valid: account.is_valid, username: validation.username, created_at: account.created_at }
 }
 
 export async function deleteMonitoringService(id: number, usuarioId: number) {

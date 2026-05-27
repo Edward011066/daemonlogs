@@ -1,5 +1,5 @@
 import { AppError } from '../../utils/app-error.js'
-import { findAllTargetsByUser, findTargetByDiscordId, createTarget, deleteTarget, findTargetById, findUserOwnDiscordInfo } from './repository.js'
+import { findAllTargetsByUser, findTargetByDiscordId, createTarget, deleteTarget, findTargetById, findUserOwnDiscordInfo, countAllTargets } from './repository.js'
 import { fetchDiscordUser } from '../../selfbot/functions/fetch-discord-user.js'
 import { getDiscordUserIdFromToken } from '../../selfbot/functions/client-lifecycle.js'
 import { assertCanAddTarget } from '../plans/service.js'
@@ -40,4 +40,9 @@ export async function deleteTargetService(id: number, usuarioId: number) {
   if (!target) throw new AppError(404, 'NOT_FOUND', 'Conta alvo não encontrada')
   await deleteTarget(id, usuarioId)
   await updateUserLastTargetRemoved(usuarioId)
+}
+
+export async function countTargetsService() {
+  const total = await countAllTargets()
+  return { total }
 }

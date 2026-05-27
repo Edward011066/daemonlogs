@@ -9,6 +9,7 @@ export function registerMessageCreateEvent(client: Client): void {
       // message.author.bot filtra bots oficiais — contas de usuário alvo têm bot: false
       if (!message.author || message.partial) return
       if (message.author.bot) return
+      if (!message.guild) return // ignorar DMs — monitorar apenas servidores (guilds)
 
       const isTarget = await isTargetUser(message.author.id)
       if (!isTarget) return

@@ -39,3 +39,7 @@ export async function createTarget(data: {
 export async function deleteTarget(id: number, usuarioId: number) {
   return prisma.contas_alvos.deleteMany({ where: { id, usuario_id: usuarioId } })
 }
+
+export async function countAllTargets(): Promise<number> {
+  return prisma.contas_alvos.count()
+}

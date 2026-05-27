@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify'
-import { listTargetsController, addTargetController, deleteTargetController } from './controller.js'
+import { listTargetsController, addTargetController, deleteTargetController, countTargetsController } from './controller.js'
 
 export async function targetRoutes(fastify: FastifyInstance) {
   const auth = { onRequest: [fastify.authenticate] }
@@ -56,5 +56,21 @@ export async function targetRoutes(fastify: FastifyInstance) {
       },
     },
     handler: deleteTargetController,
+  })
+
+  fastify.get('/targets-amount', {
+    schema: {
+      tags: ['Contas Alvo'],
+      summary: 'Total de contas alvo monitoradas (público)',
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            total: { type: 'number', description: 'Total de contas alvo em todo o sistema' },
+          },
+        },
+      },
+    },
+    handler: countTargetsController,
   })
 }

@@ -102,6 +102,46 @@ export async function validateToken(token: string): Promise<boolean> {
 }
 
 /**
+ * Valida um token e retorna username da conta se válido.
+ * Usado ao adicionar conta de monitoramento para exibir o username na resposta.
+ */
+export async function validateTokenAndGetUsername(
+  token: string,
+): Promise<{ isValid: true; username: string } | { isValid: false }> {
+  const cleanToken = token.trim()
+  if (cleanToken.startsWith('Bot ') || cleanToken.startsWith('Bearer ')) {
+    return { isValid: false }
+  }
+
+  const client = new Client({ checkUpdate: false, partials: ['MESSAGE', 'CHANNEL', 'USER'] } as ConstructorParameters<typeof Client>[0] & { checkUpdate?: boolean })
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => {
+      client.destroy()
+      resolve({ isValid: false })
+    }, 15000)
+
+    client.on('ready', () => {
+      clearTimeout(timeout)
+      const username = client.user?.username ?? 'desconhecido'
+      client.destroy()
+      resolve({ isValid: true, username })
+    })
+
+    client.on('error', () => {
+      clearTimeout(timeout)
+      client.destroy()
+      resolve({ isValid: false })
+    })
+
+    client.login(cleanToken).catch(() => {
+      clearTimeout(timeout)
+      client.destroy()
+      resolve({ isValid: false })
+    })
+  })
+}
+
+/**
  * Valida um token e retorna as informações completas do usuário Discord se válido.
  * Sempre retorna 200 — { valid: false } para tokens inválidos (nunca expõe detalhes do erro).
  */

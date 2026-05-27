@@ -43,6 +43,18 @@ export async function saveMessage(input: SaveMessageInput): Promise<void> {
 }
 
 /**
+ * Busca o conteúdo de uma mensagem armazenada pelo message_id.
+ * Usado para recuperar o conteúdo original de mensagens apagadas que estavam no banco.
+ */
+export async function findMessageContent(messageId: string): Promise<string | null> {
+  const msg = await prisma.mensagens_salvas.findUnique({
+    where: { message_id: messageId },
+    select: { conteudo: true },
+  })
+  return msg?.conteudo ?? null
+}
+
+/**
  * Salva um evento de monitoramento com deduplicação por idempotency_key.
  */
 export async function saveEvent(input: SaveEventInput): Promise<void> {

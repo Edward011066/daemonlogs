@@ -8,3 +8,10 @@ export async function findAllServers() {
   })
   return { items, total: items.length }
 }
+
+export async function findServerByGuildId(guildId: string) {
+  return prisma.servidores.findFirst({
+    where: { guild_id: guildId },
+    select: { id: true, guild_id: true, server_name: true, created_at: true },
+  })
+}
