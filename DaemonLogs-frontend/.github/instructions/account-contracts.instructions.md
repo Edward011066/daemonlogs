@@ -1,6 +1,6 @@
 ---
-description: "Use when: editar tipos compartilhados da API, consumir /me, consumir /targets, consumir /my-token, consumir /me/referrals, ajustar dashboard, perfil, quota, target card, my-token panel, aplicar summary/detail, trabalhar em src/types/index.ts, src/hooks/useCurrentUser.ts, src/hooks/useMyToken.ts, src/hooks/useReferrals.ts, src/hooks/useTargets.ts, src/components/me/**, src/components/targets/**, src/pages/DashboardPage.tsx, src/pages/ProfilePage.tsx, src/components/events/EventFilters.tsx."
-applyTo: "src/types/index.ts,src/hooks/useCurrentUser.ts,src/hooks/useMyToken.ts,src/hooks/useReferrals.ts,src/hooks/useTargets.ts,src/components/me/**,src/components/targets/**,src/pages/DashboardPage.tsx,src/pages/ProfilePage.tsx,src/components/events/EventFilters.tsx"
+description: "Use when: editar contratos de /me, /targets, /my-token ou /me/referrals, ajustar dashboard ou profile, revisar quota, referrals ou target cards, trabalhar em src/types/index.ts, src/hooks/useCurrentUser.ts, src/hooks/useMyToken.ts, src/hooks/useReferrals.ts, src/hooks/useTargets.ts, src/components/me/**, src/components/targets/**, src/pages/DashboardPage.tsx, src/pages/ProfilePage.tsx."
+applyTo: "src/types/index.ts,src/hooks/useCurrentUser.ts,src/hooks/useMyToken.ts,src/hooks/useReferrals.ts,src/hooks/useTargets.ts,src/components/me/**,src/components/targets/**,src/pages/DashboardPage.tsx,src/pages/ProfilePage.tsx"
 ---
 
 # Contratos de Conta, Alvos e Perfil

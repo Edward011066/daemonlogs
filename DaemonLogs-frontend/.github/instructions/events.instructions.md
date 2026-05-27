@@ -1,5 +1,5 @@
 ---
-description: "Use when: editar feed de eventos, criar timeline ou explorer de eventos, criar filtro de eventos, modelar payload de /events, renderizar tipo de evento, aplicar master-detail, trabalhar em src/components/events/**, src/pages/EventsPage.tsx, src/hooks/useEvents.ts."
+description: "Use when: editar feed de eventos, criar filtro ou paginação de /events, modelar payload de /events, renderizar tipos de evento, trabalhar em src/components/events/**, src/pages/EventsPage.tsx, src/hooks/useEvents.ts."
 applyTo: "src/components/events/**,src/pages/EventsPage.tsx,src/hooks/useEvents.ts"
 ---
 
@@ -61,6 +61,7 @@ type RawEvent = {
 - Use exatamente os nomes da query string da spec, sem aliases
 - Datas de `from` e `to` devem ser ISO 8601
 - O enum de `tipo` deve sair de `src/types/index.ts` e refletir a spec atual
+- Quando um seletor de alvo consumir `/targets` para filtrar `/events`, rotule cada opção com `username_global ?? username ?? discord_user_id`
 
 ## O que a IA NUNCA deve fazer
 

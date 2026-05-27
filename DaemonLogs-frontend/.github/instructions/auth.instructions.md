@@ -1,6 +1,6 @@
 ---
-description: "Use when: criar página de login, criar formulário de registro, criar formulário de ativação, criar recuperação de senha, criar callback OAuth, reduzir fricção de auth, configurar roteamento de autenticação, implementar rota protegida, tratar AUTH_MODE, ajustar redirect 401, editar logout, criar DiscordLoginButton, criar GuestRoute, criar ProtectedRoute, trabalhar em src/pages/auth/**, src/components/auth/**, src/router.tsx, src/lib/auth.ts, src/lib/api.ts, src/components/layout/Header.tsx."
-applyTo: "src/pages/auth/**,src/components/auth/**,src/router.tsx,src/lib/auth.ts,src/lib/api.ts,src/components/layout/Header.tsx"
+description: "Use when: criar página ou formulário de autenticação, configurar callback OAuth, proteger rotas, tratar AUTH_MODE no frontend, editar logout, trabalhar em src/pages/auth/**, src/components/auth/**, src/router.tsx, src/lib/auth.ts, src/components/layout/Header.tsx."
+applyTo: "src/pages/auth/**,src/components/auth/**,src/router.tsx,src/lib/auth.ts,src/components/layout/Header.tsx"
 ---
 
 # Autenticação — Roteamento e Fluxos
@@ -17,17 +17,8 @@ Documentação completa: [FRONTEND DOCUMENTAÇÃO.md](../../FRONTEND%20DOCUMENTA
 
 - `src/router.tsx` — roteamento público, callback OAuth e proteção de páginas
 - `src/lib/auth.ts` — leitura/escrita do JWT e `VITE_AUTH_MODE`
-- `src/lib/api.ts` — redirect global quando a API retorna `401`
 - `src/components/layout/Header.tsx` — ação de logout do usuário autenticado
 - `src/pages/auth/**` e `src/components/auth/**` — telas e formulários
-
-## UX de autenticação
-
-- Cada tela de auth deve ter um único objetivo primário: entrar, registrar, ativar, pedir reset ou redefinir senha.
-- Mostre apenas os campos e ações necessários para a etapa atual; o resto vira link secundário ou próxima etapa.
-- Uma ação primária por tela. Links como "já tenho conta", "esqueci a senha" e "reenviar código" devem ser secundários e claros.
-- Mensagens de erro devem ser curtas e acionáveis, sem despejar detalhes técnicos da API quando isso não ajudar o usuário.
-- Em mobile, priorize fluxo linear e largura confortável de formulário; em desktop, evite distrair com múltiplos blocos concorrendo com o form principal.
 
 ## AUTH_MODE — descoberta pelo frontend
 
@@ -48,49 +39,11 @@ VITE_API_URL=http://localhost:3000
 
 ## Estrutura de rotas
 
-Todas as páginas de auth ficam sob `/auth/`. Configure no router principal:
-
-```tsx
-// src/router.tsx
-import { Navigate, createBrowserRouter } from "react-router-dom"
-
-export const router = createBrowserRouter([
-  { path: "/", element: <LandingPage /> },
-  { path: "/auth/callback", element: <AuthCallbackPage /> },
-  {
-    element: <GuestRoute />, // redireciona logados para /dashboard
-    children: [
-      { path: "/auth/login", element: <LoginPage /> },
-      { path: "/auth/register", element: <RegisterPage /> },
-      { path: "/auth/activate", element: <ActivatePage /> },
-      { path: "/auth/forgot-password", element: <ForgotPasswordPage /> },
-      { path: "/auth/reset-password", element: <ResetPasswordPage /> },
-    ],
-  },
-  {
-    element: <ProtectedRoute />, // redireciona não-logados para /auth/login
-    children: [
-      {
-        element: <AppShell />,
-        children: [/* páginas protegidas como /dashboard, /events, /profile */],
-      },
-    ],
-  },
-  { path: "*", element: <Navigate to="/" replace /> },
-])
-```
+Todas as páginas de auth ficam sob `/auth/`. `AuthCallbackPage` deve ficar fora do `GuestRoute`, e as páginas protegidas devem ficar atrás de `ProtectedRoute`.
 
 ## LoginPage — um componente, dois modos
 
-```tsx
-// src/pages/auth/LoginPage.tsx
-import { getAuthMode } from "@/lib/auth"
-
-export function LoginPage() {
-  const mode = getAuthMode()
-  return mode === "discord" ? <DiscordLoginButton /> : <LocalLoginForm />
-}
-```
+`LoginPage` escolhe entre `LocalLoginForm` e `DiscordLoginButton` com base em `getAuthMode()`.
 
 `DiscordLoginButton` faz redirecionamento do browser (não usa `apiFetch`):
 
@@ -114,30 +67,7 @@ export function DiscordLoginButton() {
 
 ## AuthCallbackPage — obrigatório no modo discord
 
-Lê `?token=` da URL e armazena via `setToken`. Deve estar **fora** do `GuestRoute`:
-
-```tsx
-// src/pages/auth/AuthCallbackPage.tsx
-import { useEffect } from "react"
-import { useNavigate } from "react-router-dom"
-import { setToken } from "@/lib/auth"
-
-export function AuthCallbackPage() {
-  const navigate = useNavigate()
-
-  useEffect(() => {
-    const token = new URLSearchParams(window.location.search).get("token")
-    if (token) {
-      setToken(decodeURIComponent(token))
-      navigate("/", { replace: true })
-    } else {
-      navigate("/auth/login", { replace: true })
-    }
-  }, [navigate])
-
-  return <div className="flex h-screen items-center justify-center text-muted-foreground">Autenticando...</div>
-}
-```
+Lê `?token=` da URL e armazena via `setToken`. Deve estar **fora** do `GuestRoute`.
 
 **Nunca navegue para `/auth/callback` manualmente** — esse é o destino do redirect configurado no servidor (`DISCORD_OAUTH_FRONTEND_REDIRECT`).
 
@@ -160,11 +90,6 @@ POST /auth/resend-activation  { email }  → 200
 
 Na `ActivatePage`, leia o e-mail da query string:
 
-```tsx
-const [params] = useSearchParams()
-const email = params.get("email") ?? ""
-```
-
 ### Recuperação de senha
 
 ```
@@ -183,20 +108,7 @@ POST /auth/reset-password  { code, new_password }  → 200
 
 ## Proteção de rotas
 
-```tsx
-// src/components/auth/ProtectedRoute.tsx
-import { Navigate, Outlet } from "react-router-dom"
-import { getToken } from "@/lib/auth"
-
-export function ProtectedRoute() {
-  return getToken() ? <Outlet /> : <Navigate to="/auth/login" replace />
-}
-
-// src/components/auth/GuestRoute.tsx
-export function GuestRoute() {
-  return getToken() ? <Navigate to="/dashboard" replace /> : <Outlet />
-}
-```
+`ProtectedRoute` manda não autenticado para `/auth/login`. `GuestRoute` manda usuário logado para `/dashboard`.
 
 ## Erros específicos de auth
 
@@ -215,9 +127,7 @@ Sessões Discord OAuth **não** têm restrição de IP — `SESSION_IP_BLOCKED` 
 
 - Criar a rota `/auth/discord` no frontend — ela é do **servidor**; o frontend faz `window.location.href = ${VITE_API_URL}/auth/discord`
 - Usar `useNavigate` dentro de `DiscordLoginButton` — o redirect é do browser, não do React Router
-- Chamar `fetch()` ou `axios` diretamente — sempre `apiFetch()` de `@/lib/api`
 - Armazenar o JWT em `sessionStorage`, cookie ou estado React — somente `localStorage` via `setToken()`
 - Colocar `AuthCallbackPage` dentro do `GuestRoute` — bloqueia o callback quando há token antigo
 - Exibir formulários de `RegisterPage` ou `ForgotPasswordPage` na `LoginPage` em modo `discord`
 - Revelar se um e-mail existe ou não na tela de recuperação de senha
-- Alterar `src/lib/api.ts` ou `src/components/layout/Header.tsx` sem verificar primeiro se o endpoint e o status code continuam documentados em `api-endpoints.json`
