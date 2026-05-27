@@ -98,9 +98,13 @@ export function destroyUserClient(client: Client): void {
 import { createUserClient, destroyUserClient } from '../../selfbot/functions/user-client.js'
 import { startProcess, clearProcess } from '../../selfbot/functions/process-tracker.js'
 import { findMyTokenByUser } from '../my-token/repository.js'
+import { assertPremiumOrAdmin } from '../plans/service.js'
+import { PLAN_RULES } from '../../config/plan-rules.js'
 import { AppError } from '../../utils/app-error.js'
 
-const ACTION_DELAY_MS = 1500  // 1.5s entre ações — simula comportamento humano
+// Delay e regras de acesso lidos de plan-rules — NUNCA hardcodar
+const ACTION_DELAY_MS = PLAN_RULES.tools.action_delay_ms  // ms entre ações para simular comportamento humano
+// PLAN_RULES.tools.premium_only — se true, somente premium/admin pode usar tools
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
@@ -108,6 +112,11 @@ export async function closeDmsService(
   usuarioId: number,
   ignoredChannelIds: string[]
 ): Promise<{ processed: number; cancelled: boolean }> {
+  // 0. Guard de plano (se PLAN_RULES.tools.premium_only = true)
+  if (PLAN_RULES.tools.premium_only) {
+    await assertPremiumOrAdmin(usuarioId)
+  }
+
   // 1. Verificar my-token válido
   const myToken = await findMyTokenByUser(usuarioId)
   if (!myToken?.is_valid) {

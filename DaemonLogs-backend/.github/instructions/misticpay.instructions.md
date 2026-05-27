@@ -1,6 +1,5 @@
 ---
 description: "Use when: implementar integração MisticPay, API MisticPay, pagamentos MisticPay, PIX MisticPay, cash-in, cash-out, saque crypto, webhook MisticPay, MEDs, infractions, defesa de infração, ci, cs, client id, client secret, api.misticpay.com, transactions/create, transactions/withdraw, transactions/check, users/balance, users/info, users/transactions/list, meds/infractions, crypto/withdraw-api, projectWebhook."
-applyTo: "src/modules/payments/**"
 ---
 
 # MisticPay — Consulta obrigatória da documentação

@@ -15,7 +15,7 @@ applyTo: "src/modules/payments/**"
 
 ```env
 WOOVI_API_KEY=seu_app_id_da_woovi          # AppID da aplicação Woovi (Authorization header)
-WOOVI_WEBHOOK_SECRET=seu_webhook_secret    # Segredo para validar assinatura HMAC-SHA1
+WOOVI_WEBHOOK_SECRET=seu_webhook_secret    # Segredo para validar assinatura legada HMAC-SHA1 (fallback; validação primária é RSA-SHA256 via chave pública embutida)
 WOOVI_CHARGE_VALUE_CENTS=3990              # Valor em CENTAVOS — ex: 3990 = R$ 39,90
 ```
 
@@ -39,7 +39,7 @@ src/modules/payments/webhook-routes.ts    # POST /webhooks/woovi — rota separa
 | GET | `/payments/status/:correlationId` | JWT | Consulta status da cobrança |
 | POST | `/webhooks/woovi` | Nenhuma¹ | Recebe confirmação de pagamento Woovi |
 
-> ¹ Webhook usa validação de assinatura HMAC-SHA1 própria — **nunca** aplicar `fastify.authenticate` aqui.
+> ¹ Webhook usa validação RSA-SHA256 (chave pública Woovi embutida) com fallback HMAC-SHA1 — **nunca** aplicar `fastify.authenticate` aqui.
 
 ## Criar Cobrança (POST /api/v1/charge na Woovi)
 
@@ -126,13 +126,34 @@ export async function webhookRoutes(fastify: FastifyInstance) {
 // src/modules/payments/service.ts
 import crypto from 'node:crypto'
 
-export function validateWooviSignature(rawBody: string | Buffer, signatureHeader: string): boolean {
-  const expected = crypto
-    .createHmac('sha1', process.env.WOOVI_WEBHOOK_SECRET!)
-    .update(rawBody)       // RAW BODY — nunca JSON.stringify do body já parseado
-    .digest('hex')
-  // timingSafeEqual previne timing attack — nunca usar ===
-  return crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(signatureHeader, 'hex'))
+// Validação RSA-SHA256 (primária) + HMAC-SHA1 (fallback legado)
+// A implementação real em service.ts usa dois métodos em cascata:
+// 1. validateWooviPublicSignature(rawBody, signatures.signature)  — header: x-webhook-signature (base64 RSA)
+// 2. validateWooviLegacyHmac(rawBody, signatures.legacyHmacSignature) — header: x-webhook-signature (base64 HMAC-SHA1)
+export function validateWooviSignature(
+  rawBody: string | Buffer,
+  signatures: { signature?: string; legacyHmacSignature?: string }
+): boolean {
+  if (validateWooviPublicSignature(rawBody, signatures.signature ?? '')) return true
+  return validateWooviLegacyHmac(rawBody, signatures.legacyHmacSignature ?? '')
+}
+
+function validateWooviPublicSignature(rawBody: string | Buffer, sig: string): boolean {
+  if (!sig) return false
+  try {
+    const verifier = crypto.createVerify('RSA-SHA256')
+    verifier.update(rawBody)
+    return verifier.verify(WOOVI_WEBHOOK_PUBLIC_KEY, Buffer.from(sig, 'base64'))
+  } catch { return false }
+}
+
+function validateWooviLegacyHmac(rawBody: string | Buffer, sig: string): boolean {
+  const secret = process.env.WOOVI_WEBHOOK_SECRET
+  if (!secret || !sig) return false
+  const expected = crypto.createHmac('sha1', secret).update(rawBody).digest('base64')
+  try {
+    return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig))
+  } catch { return false }
 }
 ```
 

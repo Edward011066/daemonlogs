@@ -1,6 +1,6 @@
 ---
 description: "Use when: criar model Prisma, editar schema, adicionar migration, alterar tabela, criar relação, criar índice, trabalhar em schema.prisma, prisma/migrations, repository."
-applyTo: "src/prisma/**, **/*.prisma, src/modules/**/repository.ts"
+applyTo: "prisma/**, **/*.prisma, src/modules/**/repository.ts"
 ---
 
 # Banco de Dados — Regras Prisma + PostgreSQL

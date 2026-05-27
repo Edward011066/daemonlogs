@@ -1,5 +1,5 @@
 ---
-description: "Use when: criar endpoints utilitários Discord, validar token Discord com informações do usuário, buscar usuário público Discord por ID, POST /utils/validate-discord-token, GET /utils/discord-user/:id, módulo utils, utilitários sem banco, validateTokenWithUserInfo, trabalhar em src/modules/utils."
+description: "Use when: criar endpoints utilitários Discord, validar token Discord com informações do usuário, buscar usuário público Discord por ID, listar canais de servidor Discord, listar DMs abertos, guild-channels, dm-channels, POST /utils/validate-discord-token, GET /utils/discord-user/:id, GET /utils/guild-channels/:guildId, GET /utils/dm-channels, módulo utils, utilitários, validateTokenWithUserInfo, validateTokenWithExtendedInfo, trabalhar em src/modules/utils."
 applyTo: "src/modules/utils/**"
 ---
 
@@ -13,8 +13,12 @@ Endpoints `/utils/**` são **stateless** — não leem nem escrevem no banco. Us
 
 | Método | Path | Auth | Descrição |
 |--------|------|------|-----------|
-| POST | `/utils/validate-discord-token` | Não | Valida token e retorna informações do usuário Discord |
-| GET | `/utils/discord-user/:id` | Não | Retorna informações públicas de um usuário Discord por ID |
+| POST | `/utils/validate-discord-token` | **JWT obrigatório** | Valida token e retorna informações completas do usuário Discord |
+| GET | `/utils/discord-user/:id` | Não (público) | Retorna informações públicas de um usuário Discord por ID |
+| GET | `/utils/guild-channels/:guildId` | **JWT obrigatório** | Lista canais de um servidor (usa my-token) |
+| GET | `/utils/dm-channels` | **JWT obrigatório** | Lista DMs abertos do usuário (usa my-token) |
+
+> ⚠️ **CRÍTICO**: `/utils/validate-discord-token`, `/utils/guild-channels/:guildId` e `/utils/dm-channels` exigem autenticação JWT — não confundir com o endpoint público `/utils/discord-user/:id`.
 
 ## Estrutura — sem repository.ts
 

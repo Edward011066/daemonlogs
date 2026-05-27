@@ -161,6 +161,8 @@ export async function swaggerPlugin(fastify: FastifyInstance) {
 
 ## Endpoints por Módulo (referência)
 
+> Consulte o arquivo de routes de cada módulo como fonte definitiva. Esta tabela é uma referência rápida de cobertura.
+
 | Módulo | Método | Path | Auth |
 |--------|--------|------|------|
 | auth | POST | `/auth/register` | Não |
@@ -171,47 +173,47 @@ export async function swaggerPlugin(fastify: FastifyInstance) {
 | auth | POST | `/auth/forgot-password` | Não |
 | auth | POST | `/auth/verify-reset-code` | Não |
 | auth | POST | `/auth/reset-password` | Não |
+| auth | GET | `/auth/discord` | Não (apenas AUTH_MODE=discord) |
+| auth | GET | `/auth/discord/callback` | Não (apenas AUTH_MODE=discord) |
 | monitoring | GET | `/monitoring` | Sim |
 | monitoring | POST | `/monitoring` | Sim |
 | monitoring | DELETE | `/monitoring/:id` | Sim |
 | monitoring | POST | `/monitoring/:id/validate` | Sim |
+| monitoring | GET | `/monitoring/stats` | Sim |
 | targets | GET | `/targets` | Sim |
 | targets | POST | `/targets` | Sim |
 | targets | DELETE | `/targets/:id` | Sim |
 | events | GET | `/events?targetId=&tipo=&page=` | Sim |
-| messages | GET | `/messages?targetId=&page=` | Sim |
 | servers | GET | `/servers` | Não (público) |
+| me | GET | `/me` | Sim |
+| me | GET | `/me/referrals` | Sim |
+| me | PATCH | `/me/password` | Sim |
 | payments | POST | `/payments/initiate` | Sim |
 | payments | GET | `/payments/status/:correlationId` | Sim |
-| webhooks | POST | `/webhooks/woovi` | Não (assinatura Woovi) |
+| payments | GET | `/payments` | Sim |
+| webhooks | POST | `/webhooks/woovi` | Não (assinatura RSA/HMAC Woovi) |
+| webhooks | POST | `/webhooks/misticpay` | Não (validação defensiva via /transactions/check) |
 | my-token | GET | `/my-token` | Sim |
 | my-token | POST | `/my-token/add` | Sim |
 | my-token | DELETE | `/my-token/delete` | Sim |
 | my-token | PATCH | `/my-token/rotate` | Sim |
-| utils | POST | `/utils/validate-discord-token` | Não (público) |
+| utils | POST | `/utils/validate-discord-token` | **Sim** |
 | utils | GET | `/utils/discord-user/:id` | Não (público) |
+| utils | GET | `/utils/guild-channels/:guildId` | **Sim** |
+| utils | GET | `/utils/dm-channels` | **Sim** |
+| tools | GET | `/tools/status` | Sim |
 | tools | POST | `/tools/cancel-current-process` | Sim |
 | tools | POST | `/tools/close-dm` | Sim |
 | tools | POST | `/tools/leave-server` | Sim |
 | tools | POST | `/tools/delete-relationships` | Sim |
+| clear-chat | POST | `/clear-chat/cancel` | Sim |
+| clear-chat | POST | `/clear-chat/channel` | Sim |
+| clear-chat | POST | `/clear-chat/server` | Sim |
+| clear-chat | POST | `/clear-chat/dms` | Sim |
 
 ## Módulos sem repository.ts (stateless)
 
-Os módulos `utils` e `tools` não têm `repository.ts` pois não acessam o banco diretamente:
-
-```
-src/modules/utils/
-├── routes.ts
-├── controller.ts
-└── service.ts    # sem repository.ts
-
-src/modules/tools/
-├── routes.ts
-├── controller.ts
-└── service.ts    # sem repository.ts (acessa my-token/repository.ts indiretamente)
-```
-
-Ver `utils.instructions.md` e `tools.instructions.md` para detalhes.
+`utils`, `tools` e `plans` não têm `repository.ts` próprio (ou acessam apenas via outros módulos). Ver instructions específicas de cada módulo para detalhes.
 
 ## Padrão de Guard de Plano (Freemium/Premium)
 

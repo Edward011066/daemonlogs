@@ -1,6 +1,5 @@
 ---
 description: "Use when: implementar Discord OAuth2, criar rota /auth/discord, criar rota /auth/discord/callback, AUTH_MODE=discord, login com Discord, OAuth2, autenticação Discord, callback Discord, state CSRF, trocar code por token, discord_id, upsert usuário Discord, redirecionar frontend com JWT, desativar login local, src/modules/auth/discord-oauth."
-applyTo: "src/modules/auth/**"
 ---
 
 # Discord OAuth2 — Regras de Implementação
