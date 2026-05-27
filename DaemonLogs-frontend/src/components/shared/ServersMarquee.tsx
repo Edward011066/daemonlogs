@@ -19,11 +19,13 @@ function pickRandomServers(items: DiscordServer[], limit: number) {
 interface ServersMarqueeProps {
   className?: string
   title?: string
+  showTotalSummary?: boolean
 }
 
 export function ServersMarquee({
   className,
   title = "Alguns dos servidores monitorados",
+  showTotalSummary = false,
 }: ServersMarqueeProps) {
   const { data, isLoading } = useServers()
   const [sample, setSample] = useState<DiscordServer[]>([])
@@ -43,9 +45,21 @@ export function ServersMarquee({
 
   return (
     <section className={cn("space-y-3", className)}>
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Eye className="h-4 w-4 text-accent" />
-        <span>{title}</span>
+      <div className="space-y-1">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Eye className="h-4 w-4 text-accent" />
+          <span>{title}</span>
+        </div>
+
+        {showTotalSummary && data && !isLoading && (
+          <p className="pl-6 text-xs text-muted-foreground">
+            Um total de {" "}
+            <span className="font-semibold text-foreground">
+              {data.total.toLocaleString("pt-BR")}
+            </span>{" "}
+            servidores em monitoramento 24h
+          </p>
+        )}
       </div>
 
       <div className="relative overflow-hidden rounded-2xl border border-border bg-surface/70 px-3 py-3">

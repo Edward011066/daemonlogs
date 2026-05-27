@@ -185,6 +185,7 @@ export function LandingPage() {
         <ServersMarquee
           className="mt-16 w-full text-left"
           title="Alguns dos servidores monitorados"
+          showTotalSummary
         />
 
         <div className="mt-5 flex w-full flex-col gap-3 rounded-2xl border border-border/60 bg-surface/70 p-4 text-left sm:flex-row sm:items-center sm:justify-between">
